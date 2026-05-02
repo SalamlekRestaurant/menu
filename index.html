@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Restaurant Menu</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g1:#1a5c3a;--g2:#1d6e46;--g3:#e8f4ec;--acc:#2e8b57;
+  --gold:#c9a84c;--red:#e53935;--offer:#d84315;
+  --txt:#1a1a1a;--muted:#6b7280;--border:rgba(0,0,0,0.09);
+  --white:#fff;--bg:#f0f0eb;--card:#f7f7f4;
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
+
+/* RTL support */
+body.rtl{direction:rtl;text-align:right}
+body.rtl .banner-overlay{text-align:right}
+body.rtl .item-tags{left:auto;right:8px}
+body.rtl .offer-badge{left:8px;right:auto}
+body.rtl .item-footer{flex-direction:row-reverse}
+body.rtl .cart-row-sub{text-align:left}
+body.rtl .search-input-row{flex-direction:row-reverse}
+body.rtl .lang-btn{font-family:'Noto Kufi Arabic',Tahoma,Arial,sans-serif}
+body.rtl .item-name,body.rtl .item-desc,body.rtl .section-heading{font-family:'Noto Kufi Arabic',Tahoma,Arial,sans-serif}
+body.rtl .restaurant-info h1,body.rtl .banner-name{font-family:'Noto Kufi Arabic',Tahoma,Arial,sans-serif}
+
+/* LOADING */
+#loadingOverlay{position:fixed;inset:0;z-index:9999;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#loadingOverlay .spin{width:48px;height:48px;border:4px solid var(--g3);border-top-color:var(--g1);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadingOverlay p{font-size:15px;color:var(--muted)}
+
+/* BANNER */
+.banner{position:relative;width:100%;max-height:200px;height:200px;overflow:hidden;background:#0f3d25;will-change:max-height;transition:max-height .42s cubic-bezier(.4,0,.2,1)}
+@media(min-width:768px){.banner{max-height:280px;height:280px}}
+@media(min-width:1024px){.banner{max-height:340px;height:340px}}
+.banner.hidden{max-height:0!important;pointer-events:none}
+.banner-inner{width:100%;height:100%;position:relative;overflow:hidden}
+.banner-img{width:100%;height:100%;object-fit:cover;display:block}
+.banner-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:20px;background:linear-gradient(135deg,#0f3d25,#1d6e46 40%,#1a5c3a 70%,#0d2e1c);position:absolute;inset:0}
+.banner-fallback::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23fff' fill-opacity='.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E")}
+.banner-plate{position:relative;z-index:1;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:46px;flex-shrink:0}
+.banner-plate:nth-child(3){width:130px;height:130px;font-size:58px;border-color:rgba(201,168,76,.5)}
+.banner-overlay{position:absolute;inset:0;z-index:2;background:linear-gradient(to top,rgba(0,0,0,.6) 0%,rgba(0,0,0,.1) 60%,transparent 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:18px 20px;pointer-events:none}
+.banner-name{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.banner-desc{font-size:13px;color:rgba(255,255,255,.82);margin-top:4px;text-shadow:0 1px 4px rgba(0,0,0,.4)}
+
+/* ═══════════════════════════════════════════════
+   HEADER
+   Mobile (<540px): column layout
+     Row 1: [logo] [name + desc]  — full width, no wrapping
+     Row 2: buttons — full width, all pushed to the RIGHT
+   Desktop (≥540px): single row — logo+name left, buttons right
+   ═══════════════════════════════════════════════ */
+.site-header{position:sticky;top:0;z-index:100;background:var(--white);border-bottom:1px solid var(--border);transition:box-shadow .3s;direction:ltr}
+.site-header.scrolled{box-shadow:0 2px 16px rgba(0,0,0,.10)}
+
+/* Outer wrapper — COLUMN on mobile */
+.header-inner{
+  display:flex;
+  flex-direction:column;
+  padding:10px 14px 8px;
+  gap:6px;
+  transition:padding .3s;
+  direction:ltr;
+}
+.header-inner.big{padding:12px 16px 10px}
+
+/* Row 1: logo + name/desc — full width, single line */
+.hdr-row1{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  min-width:0;
+  overflow:hidden;
+}
+
+/* Row 2: buttons — full width, ALL buttons to the RIGHT */
+.hdr-row2{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+  flex-wrap:nowrap;
+  justify-content:flex-end;   /* ← always right */
+  width:100%;
+}
+
+/* Logo */
+.logo-wrap{flex-shrink:0;width:40px;height:40px;transition:width .3s,height .3s}
+.logo-wrap.big{width:50px;height:50px}
+.logo-circle{width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,var(--g1),var(--acc));display:flex;align-items:center;justify-content:center;font-size:19px;border:3px solid rgba(201,168,76,.4);overflow:hidden;transition:font-size .3s}
+.logo-wrap.big .logo-circle{font-size:24px;border-width:4px;border-color:rgba(201,168,76,.6)}
+.logo-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+
+/* Restaurant info — never wraps, always ellipsis */
+.restaurant-info{flex:1 1 0;min-width:0;overflow:hidden;direction:ltr}
+.restinfo-name-row{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;direction:ltr}
+.restaurant-info h1{
+  font-family:'Playfair Display',Georgia,'Times New Roman',serif;
+  font-size:15px;
+  font-weight:700;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  transition:font-size .3s;
+  min-width:0;
+  text-align:left;
+  line-height:1.2;
+}
+.restaurant-info p{
+  font-size:11px;
+  color:var(--muted);
+  margin-top:2px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  text-align:left;
+}
+.header-inner.big .restaurant-info h1{font-size:17px}
+.header-inner.big .restaurant-info p{font-size:12px}
+
+/* Location icon */
+.location-link{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--g3);color:var(--g1);border:1.5px solid rgba(26,92,58,.2);transition:background .15s,border-color .15s}
+.location-link:hover{background:var(--g1);color:var(--white);border-color:var(--g1)}
+
+/* Action buttons */
+.icon-btn{border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--white);cursor:pointer;font-size:15px;transition:background .15s,border-color .15s;display:flex;align-items:center;justify-content:center;height:30px}
+.icon-btn:hover{background:var(--g3);border-color:var(--g1)}
+
+.cat-toggle-btn{border:1.5px solid var(--txt);border-radius:8px;padding:4px 10px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;background:var(--white);cursor:pointer;color:var(--txt);transition:background .15s,color .15s;white-space:nowrap;height:30px}
+.cat-toggle-btn:hover{background:var(--txt);color:var(--white)}
+
+/* Lang toggle */
+.lang-btn{border:1.5px solid var(--gold);border-radius:8px;padding:4px 9px;font-size:10px;font-weight:700;background:var(--white);cursor:pointer;color:var(--g1);transition:background .15s,color .15s;white-space:nowrap;letter-spacing:.3px;text-align:center;direction:ltr;height:30px}
+.lang-btn:hover{background:var(--gold);color:var(--white)}
+.lang-btn.ar-active{background:var(--gold);color:#fff;font-family:'Noto Kufi Arabic',Tahoma,Arial,sans-serif}
+
+/* OLD class stubs kept for JS compatibility */
+.hdr-actions{display:contents}
+.hdr-bottom-row{display:contents}
+
+/* ── DESKTOP (≥540px): flip to single row ── */
+@media(min-width:540px){
+  .header-inner{
+    flex-direction:row;
+    align-items:center;
+    padding:10px 20px;
+    gap:10px;
+    min-height:60px;
+  }
+  .header-inner.big{min-height:70px;padding:12px 24px}
+  /* row1 takes remaining space, row2 stays right naturally */
+  .hdr-row1{flex:1;width:auto}
+  .hdr-row2{width:auto}
+  .logo-wrap{width:48px;height:48px}
+  .logo-wrap.big{width:60px;height:60px}
+  .logo-circle{font-size:22px}
+  .logo-wrap.big .logo-circle{font-size:28px}
+  .restaurant-info h1{font-size:17px}
+  .header-inner.big .restaurant-info h1{font-size:20px}
+  .restaurant-info p{font-size:12px}
+  .icon-btn{padding:7px 12px;font-size:17px;height:34px}
+  .view-toggle-btn{width:32px}
+  .view-toggle-wrap{height:34px}
+  .cat-toggle-btn{font-size:13px;padding:6px 13px;height:34px}
+  .lang-btn{font-size:12px;padding:6px 11px;height:34px}
+}
+@media(min-width:768px){
+  .header-inner{padding:12px 32px}
+  .header-inner.big{padding:14px 32px}
+}
+@media(min-width:1024px){
+  .header-inner{padding:12px 48px}
+  .header-inner.big{padding:14px 48px}
+  .restaurant-info h1{font-size:19px}
+  .header-inner.big .restaurant-info h1{font-size:22px}
+}
+
+/* DIVIDER */
+.divider-bar{height:7px;background:linear-gradient(90deg,#1a5c3a,#2e8b57,#c9a84c,#2e8b57,#1a5c3a)}
+
+/* SEARCH BAR */
+.search-wrap{background:var(--white);padding:10px 18px;border-bottom:1px solid var(--border)}
+.search-wrap.hidden{display:none}
+.search-input-row{display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:8px 14px}
+.search-input-row svg{flex-shrink:0;color:var(--muted)}
+.search-input{border:none;background:transparent;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:var(--txt);flex:1;outline:none}
+.search-input::placeholder{color:var(--muted)}
+.search-clear{border:none;background:none;font-size:18px;cursor:pointer;color:var(--muted);padding:0;line-height:1;display:none}
+.search-clear.visible{display:block}
+
+/* OFFERS STRIP */
+.offers-strip{background:var(--white);padding:6px 18px;border-bottom:1px solid var(--border);overflow:hidden}
+.offers-strip-label{font-size:11px;font-weight:700;color:var(--offer);text-transform:uppercase;letter-spacing:.5px;margin-bottom:0;display:none}
+.offers-strip-inner{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center}
+.offers-strip-inner::-webkit-scrollbar{display:none}
+
+/* OFFER CHIP */
+.offer-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#fff5f0,#fff0e8);border:1.5px solid #f4a57a;border-radius:30px;padding:5px 12px 5px 6px;cursor:pointer;transition:transform .18s,box-shadow .18s;height:36px}
+.offer-chip:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(216,67,21,.15)}
+.offer-chip-img{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--g3);display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden}
+.offer-chip-img img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.offer-chip-info{flex:1;min-width:0;display:flex;align-items:center;gap:6px}
+.offer-chip-name{font-size:12px;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}
+.offer-chip-cats{display:none}
+.offer-chip-cat-tag{display:none}
+.offer-chip-cat-tag.spicy{background:#c62828;color:#fff}
+.offer-chip-cat-tag.veg{background:#2e7d32;color:#fff}
+.offer-chip-cat-tag.non-veg{background:#bf360c;color:#fff}
+.offer-chip-cat-tag.popular{background:#f57c00;color:#fff}
+.offer-chip-cat-tag.new{background:#1565c0;color:#fff}
+.offer-chip-prices{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
+.offer-chip-new{font-size:12px;font-weight:700;color:var(--offer)}
+.offer-chip-old{font-size:10px;color:var(--muted);text-decoration:line-through}
+.offer-badge-strip{background:#e53935;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;white-space:nowrap}
+
+/* CATEGORIES BAR */
+.categories-bar{background:var(--white);padding:10px 18px;display:flex;gap:9px;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none;-webkit-overflow-scrolling:touch;transition:max-height .35s ease,opacity .25s ease,padding .25s ease;max-height:80px;opacity:1}
+.categories-bar.cat-hidden{max-height:0!important;opacity:0!important;padding-top:0!important;padding-bottom:0!important;overflow:hidden!important;border-bottom:none!important}
+.categories-bar::-webkit-scrollbar{display:none}
+.cat-pill{flex-shrink:0;padding:7px 15px;border-radius:30px;border:2px solid var(--border);background:var(--white);font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:400;color:var(--muted);cursor:pointer;transition:all .22s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;display:flex;align-items:center;gap:5px}
+.cat-pill img{width:18px;height:18px;border-radius:4px;object-fit:cover;flex-shrink:0}
+.cat-pill:hover{border-color:var(--acc);color:var(--acc)}
+.cat-pill.active{background:var(--g1);color:var(--white);border-color:var(--g1);font-weight:700;font-size:15px;padding:9px 20px;box-shadow:0 4px 14px rgba(26,92,58,.3);transform:scale(1.06)}
+.cat-pill.offer-pill.active{background:linear-gradient(135deg,#d84315,#e53935);border-color:#d84315;box-shadow:0 4px 14px rgba(229,57,53,.35)}
+body.rtl .cat-pill{font-family:'Noto Kufi Arabic',Tahoma,Arial,sans-serif}
+
+/* MAIN */
+.items-section{padding:14px 14px 130px}
+@media(min-width:540px) and (max-width:767px){.items-section{padding:16px 18px 130px}}
+@media(min-width:768px) and (max-width:834px){.items-section{padding:18px 22px 130px}}
+@media(min-width:835px) and (max-width:1023px){.items-section{padding:20px 28px 130px}}
+@media(min-width:1024px){.items-section{padding:24px 48px 130px}}
+.section-heading{font-size:17px;font-weight:700;color:var(--txt);margin:22px 0 12px;display:flex;align-items:center;gap:10px;scroll-margin-top:160px}
+@media(min-width:768px){.section-heading{font-size:20px;margin:30px 0 16px}}
+.section-heading:first-child{margin-top:0}
+.section-heading .label-bar{width:5px;height:20px;background:var(--gold);border-radius:3px;flex-shrink:0;display:inline-block}
+.section-heading.offer-heading .label-bar{background:var(--offer)}
+
+/* GRID */
+.items-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+
+/* Small phones — single column */
+@media(max-width:359px){
+  .items-grid{grid-template-columns:1fr;gap:10px}
+}
+
+/* Standard phones (360–539px) — 2 columns */
+@media(min-width:360px) and (max-width:539px){
+  .items-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+}
+
+/* Large / flip phones (540–767px) — 3 columns */
+@media(min-width:540px) and (max-width:767px){
+  .items-grid{grid-template-columns:repeat(3,1fr);gap:12px}
+}
+
+/* iPad mini (768–834px) — 3 columns */
+@media(min-width:768px) and (max-width:834px){
+  .items-grid{grid-template-columns:repeat(3,1fr);gap:14px}
+}
+
+/* iPad / iPad Air (835–1023px) — 4 columns */
+@media(min-width:835px) and (max-width:1023px){
+  .items-grid{grid-template-columns:repeat(4,1fr);gap:16px}
+}
+
+/* iPad Pro / small laptops (1024–1279px) — 4 columns */
+@media(min-width:1024px) and (max-width:1279px){
+  .items-grid{grid-template-columns:repeat(4,1fr);gap:18px}
+}
+
+/* Desktop (1280px+) — 5 columns */
+@media(min-width:1280px){
+  .items-grid{grid-template-columns:repeat(5,1fr);gap:20px}
+}
+
+/* ═══════════════════════════════════════════════
+   ITEM CARD — DEFAULT (grid / tile view)
+   Card is a column: image on top, body below.
+   Used when .items-grid does NOT have .bar-view class.
+   ═══════════════════════════════════════════════ */
+.item-card{
+  background:var(--card);
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  transition:transform .18s,box-shadow .18s;
+  position:relative;
+}
+.item-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(26,92,58,.12)}
+
+/* Thumbnail — full-width square-ish image for grid view */
+.item-thumb{
+  width:100%;
+  aspect-ratio:1/.9;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:52px;
+  position:relative;
+  overflow:hidden;
+  background:#eceae7;
+}
+.item-thumb img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0}
+.item-thumb .thumb-emoji{position:relative;z-index:1;font-size:52px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.10))}
+
+/* Offer badge — rotated sticker on top-right of thumb */
+.offer-badge{position:absolute;top:8px;right:8px;z-index:5;background:linear-gradient(135deg,#d84315,#e53935);color:#fff;font-size:10px;font-weight:700;padding:4px 8px;border-radius:20px;transform:rotate(3deg);box-shadow:0 2px 8px rgba(229,57,53,.4);letter-spacing:.3px}
+body.rtl .offer-badge{right:auto;left:8px;transform:rotate(-3deg)}
+
+/* ── Tag chips — GRID VIEW ──
+   Small absolute tags stacked in top-left corner of thumb.
+   In bar view: overridden to vertically centered pill column on left of circle. */
+.item-tags{
+  position:absolute;
+  top:8px;
+  left:8px;
+  z-index:5;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  align-items:flex-start;
+}
+body.rtl .item-tags{left:auto;right:8px;align-items:flex-end;}
+
+/* Base tag — compact pill for grid view */
+.tag{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:9px;
+  font-weight:700;
+  padding:2px 7px;
+  border-radius:20px;
+  letter-spacing:.3px;
+  white-space:nowrap;
+  line-height:1.3;
+  box-shadow:0 1px 4px rgba(0,0,0,.18);
+}
+
+/* Tag colors */
+.tag.new{background:#1565c0;color:#fff}
+.tag.popular{background:#f57c00;color:#fff}
+.tag.spicy{background:#c62828;color:#fff}
+.tag.veg{background:#2e7d32;color:#fff}
+.tag.non-veg,.tag.nonveg{background:#bf360c;color:#fff}
+.tag.most-selling,.tag.bestseller,.tag.best-seller{background:#7b1fa2;color:#fff}
+
+/* Card body — sits below the thumbnail */
+.item-body{padding:10px 12px 12px;display:flex;flex-direction:column;flex:1}
+.item-name{font-size:13px;font-weight:700;color:var(--txt);line-height:1.3}
+@media(min-width:768px){.item-name{font-size:15px}}
+.item-desc{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media(min-width:768px){.item-desc{font-size:12px}}
+.item-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.price-block{display:flex;flex-direction:column}
+.item-price{font-size:14px;font-weight:700;color:var(--g1)}
+.item-price.offer-price{color:var(--offer)}
+.item-old-price{font-size:11px;color:var(--muted);text-decoration:line-through;line-height:1}
+.save-label{font-size:9px;font-weight:700;color:var(--offer);margin-top:1px}
+
+
+
+
+/* ═══════════════════════════════════════════════
+   BAR VIEW — .bar-view on .items-grid
+   Layout: card is a row with image at a FIXED left offset (52px margin)
+   so ALL images always start at the same X position.
+   Tags are absolutely positioned in that 52px left zone.
+   Cards without tags just have clean empty left space — images stay aligned.
+   ═══════════════════════════════════════════════ */
+
+.items-grid.bar-view{
+  grid-template-columns:1fr !important;
+  gap:10px;
+}
+@media(min-width:540px){
+  .items-grid.bar-view{ grid-template-columns:repeat(2,1fr) !important; gap:12px; }
+}
+@media(min-width:1024px){
+  .items-grid.bar-view{ grid-template-columns:repeat(3,1fr) !important; gap:14px; }
+}
+@media(min-width:1280px){
+  .items-grid.bar-view{ grid-template-columns:repeat(4,1fr) !important; gap:16px; }
+}
+
+/* Card */
+.items-grid.bar-view .item-card{
+  flex-direction:row;
+  align-items:stretch;
+  border-radius:16px;
+  border:1px solid var(--border);
+  background:var(--card);
+  box-shadow:0 2px 12px rgba(0,0,0,.07);
+  min-height:120px;
+  padding:0;
+  gap:0;
+  overflow:hidden;
+  position:relative;
+}
+.items-grid.bar-view .item-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 24px rgba(26,92,58,.13);
+}
+
+/* Tags: absolutely placed in the 52px left zone — no column, no border, no bg */
+.items-grid.bar-view .item-tags{
+  position:absolute;
+  top:0;
+  left:0;
+  width:52px;
+  height:100%;
+  z-index:4;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:8px 4px;
+  pointer-events:none;
+}
+body.rtl .items-grid.bar-view .item-tags{
+  left:auto;
+  right:0;
+}
+
+/* Tag pill */
+.items-grid.bar-view .tag{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:8.5px;
+  font-weight:700;
+  padding:3px 6px;
+  border-radius:20px;
+  white-space:nowrap;
+  letter-spacing:.2px;
+  width:44px;
+  text-align:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.22);
+  pointer-events:auto;
+}
+
+/* Image: always starts at 52px from left — fixed offset guarantees vertical alignment */
+.items-grid.bar-view .item-thumb{
+  width:120px;
+  min-width:120px;
+  flex:0 0 120px;
+  height:auto;
+  aspect-ratio:unset;
+  border-radius:0;
+  background:#eceae7;
+  position:relative;
+  overflow:hidden;
+  align-self:stretch;
+  margin-left:52px;         /* ← THIS is what aligns all images in one column */
+}
+body.rtl .items-grid.bar-view .item-thumb{
+  margin-left:0;
+  margin-right:52px;
+}
+.items-grid.bar-view .item-thumb img{
+  border-radius:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  position:absolute;
+  inset:0;
+}
+.items-grid.bar-view .item-thumb .thumb-emoji{
+  font-size:36px;
+  position:relative;
+  z-index:1;
+}
+
+/* Offer badge */
+.items-grid.bar-view .offer-badge{
+  top:8px;
+  right:10px;
+  transform:rotate(0deg);
+  font-size:9px;
+  padding:3px 7px;
+  z-index:5;
+}
+body.rtl .items-grid.bar-view .offer-badge{
+  right:auto;
+  left:10px;
+}
+
+/* Body */
+.items-grid.bar-view .item-body{
+  padding:12px 14px;
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:flex-start;
+  text-align:left;
+}
+
+/* Name */
+.items-grid.bar-view .item-name{
+  font-size:13px;
+  font-weight:700;
+  line-height:1.35;
+  white-space:normal;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  width:100%;
+  text-align:left;
+}
+@media(min-width:540px){
+  .items-grid.bar-view .item-name{ font-size:14px; }
+}
+
+/* Desc */
+.items-grid.bar-view .item-desc{
+  font-size:11px;
+  margin-top:3px;
+  color:var(--muted);
+  -webkit-line-clamp:2;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  width:100%;
+  text-align:left;
+  line-height:1.4;
+}
+
+/* Footer */
+.items-grid.bar-view .item-footer{
+  margin-top:8px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:nowrap;
+  gap:8px;
+  width:100%;
+}
+
+
+/* ═══════════════════════════════════════════════
+   VIEW TOGGLE BUTTON GROUP  ▦ ▬
+   2 buttons: grid / bar
+   .active = currently selected view (green fill).
+   Toggle logic: viewToggle() in script section.
+   ═══════════════════════════════════════════════ */
+.view-toggle-wrap{
+  display:flex;
+  gap:0;
+  border:2px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  height:32px;
+}
+.view-toggle-btn{
+  width:32px;
+  height:100%;
+  border:none;
+  background:var(--white);
+  cursor:pointer;
+  font-size:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background .15s,color .15s;
+  color:var(--muted);
+}
+.view-toggle-btn:hover{background:var(--g3);color:var(--g1)}
+/* Active state: green fill */
+.view-toggle-btn.active{
+  background:var(--g1);
+  color:var(--white);
+}
+/* Dividers between buttons */
+.view-toggle-btn:not(:last-child){
+  border-right:1.5px solid var(--border);
+}
+
+/* QTY */
+.qty-control{display:flex;align-items:center;border-radius:20px;overflow:hidden;border:1.5px solid var(--g1)}
+.qty-btn{width:26px;height:26px;border:none;background:var(--white);color:var(--g1);font-size:17px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:500;transition:background .12s;flex-shrink:0}
+.qty-btn:hover{background:var(--g3)}
+.qty-btn.add-only{width:30px;height:30px;background:var(--g1);color:var(--white);border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,transform .1s}
+.qty-btn.add-only:hover{background:#0f3d25}
+.qty-btn.add-only:active{transform:scale(.88)}
+.qty-num{font-size:12px;font-weight:700;min-width:20px;text-align:center;color:var(--g1);background:var(--white);padding:0 2px}
+
+/* FOOTER — always LTR: Total on left, Cart button on right */
+.footer-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--white);border-top:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 -4px 20px rgba(0,0,0,.08);direction:ltr}
+@media(min-width:768px){.footer-bar{padding:12px 32px}}
+@media(min-width:1024px){.footer-bar{padding:14px 48px}}
+.total-label{font-size:14px;font-weight:600;color:var(--txt)}
+.total-amount{color:var(--g1);font-size:16px}
+.cart-btn{background:var(--g1);color:var(--white);border:none;border-radius:10px;padding:10px 22px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s,transform .1s}
+.cart-btn:hover{background:#0f3d25}
+.cart-btn:active{transform:scale(.97)}
+.cart-badge{background:var(--gold);color:#3a2400;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;min-width:20px;text-align:center}
+
+/* MODAL — always LTR layout */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);align-items:flex-end;justify-content:center;direction:ltr}
+.modal-overlay.open{display:flex}
+.cart-modal{background:var(--white);width:100%;max-width:560px;border-radius:22px 22px 0 0;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,.18);animation:slideUp .28s cubic-bezier(.22,1,.36,1);direction:ltr}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-handle{display:flex;justify-content:center;padding:12px 0 0}
+.modal-handle-bar{width:38px;height:4px;border-radius:4px;background:#ddd}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-header h2{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:20px;font-weight:700}
+.modal-close{border:none;background:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;padding:4px}
+.customer-row{padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.customer-row-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.customer-fields{display:flex;flex-direction:column;gap:8px}
+.customer-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:var(--txt);outline:none;transition:border-color .15s;background:var(--bg)}
+.customer-input:focus{border-color:var(--g1);background:var(--white)}
+.customer-input::placeholder{color:var(--muted)}
+.cart-items-wrap{flex:1;overflow-y:auto}
+.cart-row{display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid var(--border)}
+.cart-row-thumb{width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0;background:var(--g3);display:flex;align-items:center;justify-content:center;font-size:22px}
+.cart-row-thumb img{width:100%;height:100%;object-fit:cover}
+.cart-row-info{flex:1;min-width:0}
+.cart-row-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cart-row-price{font-size:12px;color:var(--muted);margin-top:2px}
+.cart-row-qty{display:flex;align-items:center;border-radius:20px;overflow:hidden;border:1.5px solid var(--g1);flex-shrink:0}
+.cqty-btn{width:28px;height:28px;border:none;background:var(--white);color:var(--g1);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:500;transition:background .12s}
+.cqty-btn:hover{background:var(--g3)}
+.cqty-num{font-size:12px;font-weight:700;min-width:22px;text-align:center;color:var(--g1);background:var(--white)}
+.cart-row-sub{font-size:13px;font-weight:700;color:var(--g1);white-space:nowrap;min-width:58px;text-align:right}
+.cart-footer{padding:14px 20px 20px;border-top:1.5px solid var(--border);background:var(--white);flex-shrink:0}
+.cart-total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.cart-total-label{font-size:16px;font-weight:700;font-family:'Playfair Display',serif}
+.cart-total-amount{font-size:20px;font-weight:700;color:var(--g1);font-family:'Playfair Display',serif}
+.wa-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px;background:#25D366;color:#fff;border:none;border-radius:14px;cursor:pointer;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;transition:background .15s,transform .1s;box-shadow:0 4px 18px rgba(37,211,102,.35);letter-spacing:.01em}
+.wa-btn:hover{background:#1db954}
+.wa-btn:active{transform:scale(.98)}
+
+/* EMPTY / ERROR */
+.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state .big-icon{font-size:52px;margin-bottom:12px}
+.no-results{text-align:center;padding:40px 20px;color:var(--muted)}
+.no-results .big-icon{font-size:40px;margin-bottom:10px}
+.error-state{text-align:center;padding:60px 20px;color:var(--muted)}
+
+/* RESPONSIVE extra-small fallback */
+@media(max-width:359px){
+  .header-inner{padding:8px 10px 6px}
+  .hdr-row2{gap:4px;justify-content:flex-end}
+  .cat-toggle-btn{padding:4px 7px;font-size:10px}
+  .lang-btn{padding:4px 7px;font-size:9px}
+  .item-body{padding:8px 8px 10px}
+}
+@media(min-width:768px){
+  .modal-overlay{align-items:center}
+  .cart-modal{border-radius:22px;max-width:540px;max-height:85vh}
+  .offers-strip{padding:12px 32px}
+  .categories-bar{padding:10px 32px}
+  .search-wrap{padding:10px 32px}
+}
+@media(min-width:1024px){
+  .categories-bar{padding:10px 48px}
+  .search-wrap{padding:10px 48px}
+  .offers-strip{padding:12px 48px}
+}
+</style>
+<script>
+(function(){
+  try{
+    var l=document.createElement('link');
+    l.rel='stylesheet';
+    l.href='https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=Noto+Kufi+Arabic:wght@400;700&display=swap';
+    document.head.appendChild(l);
+  }catch(ex){}
+})();
+</script>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingOverlay"><div class="spin"></div><p id="loadingText">Loading menu…</p></div>
+
+<!-- BANNER -->
+<div class="banner" id="banner">
+  <div class="banner-inner" id="bannerInner">
+    <div class="banner-fallback" id="bannerFallback">
+      <div class="banner-plate">🍽️</div>
+      <div class="banner-plate">🥘</div>
+      <div class="banner-plate">🍴</div>
+      <div class="banner-plate">🥗</div>
+      <div class="banner-plate">🍲</div>
+    </div>
+  </div>
+  <div class="banner-overlay">
+    <div class="banner-name" id="bannerName"></div>
+    <div class="banner-desc" id="bannerDesc"></div>
+  </div>
+</div>
+
+<!-- STICKY HEADER -->
+<header class="site-header" id="siteHeader">
+  <div class="header-inner" id="headerInner">
+    <!-- Row 1: Logo + Restaurant Name/Desc/Location -->
+    <div class="hdr-row1">
+      <div class="logo-wrap" id="logoWrap"><div class="logo-circle" id="logoCircle">🍽️</div></div>
+      <div class="restaurant-info">
+        <div class="restinfo-name-row">
+          <h1 id="restaurantName">Loading…</h1>
+          <a id="locationLink" class="location-link" href="#" target="_blank" rel="noopener" title="Open in Maps" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </a>
+        </div>
+        <p id="restaurantDesc"></p>
+      </div>
+    </div>
+    <!-- Row 2: All action buttons in one line -->
+    <div class="hdr-row2">
+      <button class="lang-btn" id="langBtn" onclick="toggleLang()" title="Switch language">EN | عر</button>
+      <button class="icon-btn" title="Search" onclick="toggleSearch()">🔍</button>
+      <div class="view-toggle-wrap">
+        <button class="view-toggle-btn active" id="viewBtnGrid" title="Grid view" onclick="viewToggle('grid')">▦</button>
+        <button class="view-toggle-btn" id="viewBtnBar" title="Bar view" onclick="viewToggle('bar')">▬</button>
+      </div>
+      <button class="cat-toggle-btn" id="catToggleBtn" onclick="toggleCategoryBar()">☰ Menu</button>
+    </div>
+  </div>
+  <div class="divider-bar"></div>
+
+  <!-- SEARCH -->
+  <div class="search-wrap hidden" id="searchWrap">
+    <div class="search-input-row">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" id="searchInput" placeholder="Search items…" oninput="onSearch(this.value)">
+      <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+    </div>
+  </div>
+
+  <!-- OFFERS STRIP — shown when categories hidden -->
+  <div class="offers-strip" id="offersStripTop" style="display:none">
+    <div class="offers-strip-label" id="offersLabelTop">🔥 Today's Offers</div>
+    <div class="offers-strip-inner" id="offersChipsTop"></div>
+  </div>
+
+  <!-- CATEGORIES BAR — starts hidden, toggled by button -->
+  <div class="categories-bar cat-hidden" id="categoryBar"></div>
+
+  <!-- OFFERS STRIP — shown when categories visible -->
+  <div class="offers-strip" id="offersStripBottom" style="display:none">
+    <div class="offers-strip-label" id="offersLabelBottom">🔥 Today's Offers</div>
+    <div class="offers-strip-inner" id="offersChipsBottom"></div>
+  </div>
+</header>
+
+<!-- ITEMS -->
+<main class="items-section">
+  <div id="allCategorySections"></div>
+</main>
+
+<!-- FOOTER -->
+<div class="footer-bar">
+  <div class="total-label"><span id="totalLabel">Total:</span> <span class="total-amount" id="totalAmount">AED 0.00</span></div>
+  <button class="cart-btn" onclick="showCart()">🛒 <span id="cartLabel">Cart</span> <span class="cart-badge" id="cartBadge">0</span></button>
+</div>
+
+<!-- CART MODAL -->
+<div class="modal-overlay" id="cartModal" onclick="closeCartOnBackdrop(event)">
+  <div class="cart-modal">
+    <div class="modal-handle"><div class="modal-handle-bar"></div></div>
+    <div class="modal-header">
+      <h2 id="cartTitle">🛒 Your Order</h2>
+      <button class="modal-close" onclick="closeCart()">✕</button>
+    </div>
+    <div class="customer-row">
+      <div class="customer-row-label" id="detailsLabel">Your Details</div>
+      <div class="customer-fields">
+        <input class="customer-input" id="customerName" placeholder="Your name (e.g. Ahmed)" autocomplete="name">
+        <input class="customer-input" id="customerNote" placeholder="Special instructions (e.g. no onions, extra sauce…)">
+      </div>
+    </div>
+    <div class="cart-items-wrap" id="cartItems"></div>
+    <div class="cart-footer">
+      <div class="cart-total-row">
+        <span class="cart-total-label" id="cartTotalLabel">Total</span>
+        <span class="cart-total-amount" id="modalTotal">AED 0.00</span>
+      </div>
+      <button class="wa-btn" onclick="sendToWhatsApp()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <span id="waLabel">Send Order on WhatsApp</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════
+const CUR = 'AED';
+
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let MENU=[], CATEGORIES=[], OFFERS=[], INFO={};
+let cart={}, currentCat='all', catBarVisible=false;
+let scrollSpyObserver=null;
+let lang='en'; // 'en' or 'ar'
+
+const TAG_CONFIG={
+  new:           {label:'New',            label_ar:'جديد',           cls:'new'},
+  popular:       {label:'Popular',        label_ar:'مشهور',          cls:'popular'},
+  spicy:         {label:'🌶 Spicy',       label_ar:'🌶 حار',         cls:'spicy'},
+  veg:           {label:'🥦 Veg',         label_ar:'🥦 نباتي',       cls:'veg'},
+  'non-veg':     {label:'🍖 Non-Veg',     label_ar:'🍖 لحوم',        cls:'non-veg'},
+  nonveg:        {label:'🍖 Non-Veg',     label_ar:'🍖 لحوم',        cls:'non-veg'},
+  'most-selling':{label:'⭐ Most Selling',label_ar:'⭐ الأكثر مبيعاً',cls:'most-selling'},
+  bestseller:    {label:'⭐ Best Seller',  label_ar:'⭐ الأفضل',      cls:'most-selling'},
+  'best-seller': {label:'⭐ Best Seller',  label_ar:'⭐ الأفضل',      cls:'most-selling'},
+};
+
+// UI strings
+const T = {
+  en:{
+    loading:'Loading menu…', menu:'☰ Menu', search:'Search items…',
+    offers:"🔥 Today's Offers", total:'Total:', cart:'Cart', order:'🛒 Your Order',
+    details:'Your Details', namePh:'Your name (e.g. Ahmed)',
+    notePh:'Special instructions (e.g. no onions…)', cartTotal:'Total',
+    wa:'Send Order on WhatsApp', all:'All', noItems:'No items found for',
+    noOffers:'No offers right now.', empty:'No items yet.', emptyCart:'Cart is empty!',
+    waNumMissing:'WhatsApp number not set in Info sheet.',
+    langBtn:'عر'
+  },
+  ar:{
+    loading:'جاري تحميل القائمة…', menu:'☰ القائمة', search:'ابحث عن أصناف…',
+    offers:'🔥 عروض اليوم', total:'المجموع:', cart:'السلة', order:'🛒 طلبك',
+    details:'بياناتك', namePh:'اسمك (مثال: أحمد)',
+    notePh:'ملاحظات خاصة (مثال: بدون بصل…)', cartTotal:'المجموع',
+    wa:'إرسال الطلب عبر واتساب', all:'الكل', noItems:'لا توجد نتائج لـ',
+    noOffers:'لا توجد عروض الآن.', empty:'لا توجد أصناف بعد.', emptyCart:'السلة فارغة!',
+    waNumMissing:'رقم الواتساب غير مُضاف في جدول Info.',
+    langBtn:'EN'
+  }
+};
+
+// ═══════════════════════════════════════════════════
+//  LANGUAGE TOGGLE
+// ═══════════════════════════════════════════════════
+function toggleLang(){
+  lang = lang==='en' ? 'ar' : 'en';
+  const isAr = lang==='ar';
+  document.documentElement.lang = lang;
+  document.documentElement.dir  = isAr ? 'rtl' : 'ltr';
+  document.body.classList.toggle('rtl', isAr);
+  document.getElementById('langBtn').textContent = T[lang].langBtn;
+  document.getElementById('langBtn').classList.toggle('ar-active', isAr);
+  document.getElementById('catToggleBtn').textContent = T[lang].menu;
+  document.getElementById('searchInput').placeholder = T[lang].search;
+  document.getElementById('offersLabelTop').textContent = T[lang].offers;
+  document.getElementById('offersLabelBottom').textContent = T[lang].offers;
+  document.getElementById('totalLabel').textContent = T[lang].total;
+  document.getElementById('cartLabel').textContent = T[lang].cart;
+  document.getElementById('cartTitle').textContent = T[lang].order;
+  document.getElementById('detailsLabel').textContent = T[lang].details;
+  document.getElementById('customerName').placeholder = T[lang].namePh;
+  document.getElementById('customerNote').placeholder = T[lang].notePh;
+  document.getElementById('cartTotalLabel').textContent = T[lang].cartTotal;
+  document.getElementById('waLabel').textContent = T[lang].wa;
+  // Update header name/desc text for language (position stays fixed LTR)
+  const _nm  = (isAr && INFO.name_ar) ? INFO.name_ar : (INFO.name||'Restaurant');
+  const _dsc = (isAr && INFO.desc_ar)  ? INFO.desc_ar  : (INFO.desc||'');
+  document.getElementById('restaurantName').textContent = _nm;
+  document.getElementById('restaurantDesc').textContent = _dsc;
+  // Banner also updates
+  document.getElementById('bannerName').textContent = _nm;
+  document.getElementById('bannerDesc').textContent = _dsc;
+  // Rebuild category bar & re-render items only
+  buildCategoryBar();
+  buildOffersStrips();
+  renderCurrentView();
+}
+
+
+function init(raw){
+  try{ parseInfo(raw.info||[1]); }       catch(ex){ console.warn('parseInfo:',ex); }
+  try{ parseItemsSheet(raw.items||[]); } catch(ex){ console.warn('parseItems:',ex); }
+  applyInfo();
+  buildCategoryBar();
+  buildOffersStrips();
+  renderAllSections();
+  document.getElementById('loadingOverlay').style.display='none';
+}
+
+// ═══════════════════════════════════════════════════
+//  GOOGLE DRIVE IMAGE URL CONVERTER
+// ═══════════════════════════════════════════════════
+function normImg(url) {
+  if (!url) return '';
+  // Match both /file/d/ID/view and /open?id=ID formats
+  const m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1000';
+  return url; // not a Drive link — return as-is
+}
+
+// ═══════════════════════════════════════════════════
+//  INFO PARSER
+//  Info sheet: row[0]=header, row[1]=values
+//  Col: 0=name 1=description 2=location 3=logo 4=banner
+//       5=cafeteria number 6=rider number 7=track url
+//       8=name_ar 9=description_ar
+// ═══════════════════════════════════════════════════
+function parseInfo(rows){
+  if(!rows||!rows.length) return;
+  const v = rows.length>=2 ? rows[1] : rows[0];
+  const col = n => String(v[n]||'').trim();
+  INFO={
+    name:         col(0) || 'Restaurant',
+    desc:         col(1) || '',
+    location:     col(2) || '',
+    logo_url:     normImg(col(3)),
+    banner_url:   normImg(col(4)),
+    cafeteria_wa: col(5),
+    rider_number: col(6),
+    track_url:    col(7),
+    name_ar:      col(8) || '',
+    desc_ar:      col(9) || ''
+  };
+  if(!INFO.track_url && INFO.cafeteria_wa){
+    INFO.track_url=`https://wa.me/${INFO.cafeteria_wa.replace(/\D/g,'')}`;
+  }
+}
+// ═══════════════════════════════════════════════════
+//  ITEMS PARSER
+//  Col 0 = Category (EN)  Col 1 = Item Name (EN)  Col 2 = Desc (EN)
+//  Col 3 = Price          Col 4 = Offer Price      Col 5 = Cat Icon
+//  Col 6 = Item Image     Col 7 = Tags
+//  Col 8 = Category (AR)  Col 9 = Item Name (AR)   Col 10 = Desc (AR)
+// ═══════════════════════════════════════════════════
+function parseItemsSheet(rows){
+  if(!rows||!rows.length){ MENU=[]; CATEGORIES=[]; OFFERS=[]; return; }
+  // Skip header row if first cell looks like a header
+  let dataRows = rows;
+  const firstCell = String(rows[0][0]||'').toLowerCase();
+  if(firstCell.includes('category') || firstCell.includes('cat') || firstCell==='col' || firstCell==='#'){
+    dataRows = rows.slice(1);
+  }
+  dataRows = dataRows.filter(r=>{
+    return String(r[0]||'').trim() || String(r[1]||'').trim();
+  });
+
+  const catMap={};
+  const items=[];
+
+  dataRows.forEach((r,idx)=>{
+    const col=(n)=>String(r[n]||'').trim();
+
+    const catName   = col(0) || 'Other';
+    const itemName  = col(1) || '—';
+    const desc      = col(2);
+    const price     = parseFloat(col(3))||0;
+    const offerRaw  = col(4);
+    const catIcon   = col(5);
+    const imgUrl    = normImg(col(6));
+    const tagsRaw   = col(7);
+    const catNameAr = col(8)  || catName;
+    const itemNameAr= col(9)  || itemName;
+    const descAr    = col(10) || desc;
+
+    const offerPrice = offerRaw!=='' ? parseFloat(offerRaw)||0 : 0;
+    const hasOffer   = offerPrice>0 && offerPrice<price;
+    const finalPrice = hasOffer ? offerPrice : price;
+    const oldPrice   = hasOffer ? price : 0;
+    const discPct    = hasOffer ? Math.round((price-offerPrice)/price*100) : 0;
+    const saveAmt    = hasOffer ? (price-offerPrice).toFixed(2) : '0';
+    const discLabel  = hasOffer ? `${discPct}% OFF` : '';
+    const saveLabel  = hasOffer ? `Save ${CUR} ${saveAmt}` : '';
+    const saveLabelAr= hasOffer ? `وفّر ${CUR} ${saveAmt}` : '';
+
+    const catId = catName.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'') || 'other';
+    if(!catMap[catId]){
+      catMap[catId]={ id:catId, name:catName, name_ar:catNameAr, icon:catIcon };
+    }
+    const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean) : [];
+
+    items.push({
+      id:String(idx+1), name:itemName, name_ar:itemNameAr,
+      desc, desc_ar:descAr, price, finalPrice, oldPrice,
+      hasOffer, discPct, saveAmt, discLabel, saveLabel, saveLabelAr,
+      cats:[catId], cat:catId, image_url:imgUrl, tags, available:true
+    });
+  });
+
+  MENU=items;
+  CATEGORIES=Object.values(catMap);
+  OFFERS=MENU.filter(i=>i.hasOffer);
+}
+
+// ═══════════════════════════════════════════════════
+//  APPLY INFO
+// ═══════════════════════════════════════════════════
+function applyInfo(){
+  const isAr = lang==='ar';
+  const nm  = (isAr&&INFO.name_ar) ? INFO.name_ar : (INFO.name||'Restaurant');
+  const dsc = (isAr&&INFO.desc_ar) ? INFO.desc_ar  : (INFO.desc||'');
+  document.title = INFO.name || 'Restaurant Menu';
+  document.getElementById('restaurantName').textContent = nm;
+  document.getElementById('restaurantDesc').textContent = dsc;
+  document.getElementById('bannerName').textContent     = nm;
+  document.getElementById('bannerDesc').textContent     = dsc;
+  // Location link
+  const locLink=document.getElementById('locationLink');
+  if(INFO.location){
+    // If it's already a URL use it, else build a Google Maps search
+    const href=INFO.location.startsWith('http')
+      ? INFO.location
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(INFO.location)}`;
+    locLink.href=href;
+    locLink.style.display='flex';
+  } else {
+    locLink.style.display='none';
+  }
+  // Logo
+  const lc=document.getElementById('logoCircle');
+  if(INFO.logo_url){
+    lc.innerHTML='';
+    const img=document.createElement('img');
+    img.src=INFO.logo_url; img.alt='logo';
+    img.onerror=()=>{ img.remove(); };
+    lc.appendChild(img);
+  }
+  // Banner
+  const bi=document.getElementById('bannerInner');
+  const prev=bi.querySelector('.banner-img');
+  if(prev) prev.remove();
+  if(INFO.banner_url){
+    const img=document.createElement('img');
+    img.className='banner-img'; img.alt='banner'; img.src=INFO.banner_url;
+    img.onerror=()=>img.remove();
+    img.onload=()=>{const fb=document.getElementById('bannerFallback');if(fb)fb.style.display='none';};
+    bi.prepend(img);
+  }
+}
+// ═══════════════════════════════════════════════════
+//  CATEGORY BAR
+// ═══════════════════════════════════════════════════
+function buildCategoryBar(){
+  const isAr = lang==='ar';
+  const bar=document.getElementById('categoryBar');
+  bar.innerHTML=`<button class="cat-pill active" data-cat="all" onclick="selectCat(this,'all')">${isAr?'الكل':'All'}</button>`;
+  if(OFFERS.length){
+    bar.innerHTML+=`<button class="cat-pill offer-pill" data-cat="__offers__" onclick="selectCat(this,'__offers__')">🔥 ${isAr?'العروض':'Offers'}</button>`;
+  }
+  CATEGORIES.forEach(cat=>{
+    const isUrl=cat.icon&&(cat.icon.startsWith('http')||cat.icon.startsWith('/'));
+    const iconHtml=isUrl
+      ?`<img src="${e(cat.icon)}" alt="" onerror="this.remove()">`
+      :(cat.icon?`<span>${cat.icon}</span>`:'');
+    const label = (isAr&&cat.name_ar) ? cat.name_ar : cat.name;
+    bar.innerHTML+=`<button class="cat-pill" data-cat="${e(cat.id)}" onclick="selectCat(this,'${e(cat.id)}')">${iconHtml}${e(label)}</button>`;
+  });
+  // Restore active state
+  bar.querySelectorAll('.cat-pill').forEach(p=>p.classList.toggle('active',p.dataset.cat===currentCat));
+}
+
+// ═══════════════════════════════════════════════════
+//  OFFERS STRIPS
+// ═══════════════════════════════════════════════════
+function buildOffersStrips(){
+  if(!OFFERS.length) return;
+  const isAr = lang==='ar';
+  const html=OFFERS.map(item=>{
+    const thumb=item.image_url
+      ?`<div class="offer-chip-img"><img src="${e(item.image_url)}" alt="" onerror="this.style.display='none'"></div>`
+      :`<div class="offer-chip-img">🎁</div>`;
+    const catTagHtml=item.tags.filter(t=>TAG_CONFIG[t]).slice(0,3).map(t=>{
+      const cfg=TAG_CONFIG[t];
+      return`<span class="offer-chip-cat-tag ${cfg.cls}">${isAr?cfg.label_ar:cfg.label}</span>`;
+    }).join('');
+    const discBadge=item.discLabel?`<span class="offer-badge-strip">${e(item.discLabel)}</span>`:'';
+    const priceDetail=item.hasOffer
+      ?`<span class="offer-chip-new">${CUR} ${item.finalPrice.toFixed(2)}</span><span class="offer-chip-old">${CUR} ${item.oldPrice.toFixed(2)}</span>${discBadge}`
+      :`<span class="offer-chip-new">${CUR} ${item.finalPrice.toFixed(2)}</span>`;
+    const nm = (isAr&&item.name_ar) ? item.name_ar : item.name;
+    return`<div class="offer-chip" onclick="jumpToItem('${e(item.id)}')">
+      ${thumb}
+      <div class="offer-chip-info">
+        <div class="offer-chip-name">${e(nm)}</div>
+        ${catTagHtml?`<div class="offer-chip-cats">${catTagHtml}</div>`:''}
+        <div class="offer-chip-prices">${priceDetail}</div>
+      </div></div>`;
+  }).join('');
+  document.getElementById('offersChipsTop').innerHTML=html;
+  document.getElementById('offersChipsBottom').innerHTML=html;
+  syncOffersStripVisibility();
+}
+
+function syncOffersStripVisibility(){
+  const top=document.getElementById('offersStripTop');
+  const bot=document.getElementById('offersStripBottom');
+  if(!top||!bot) return;
+  if(!OFFERS.length){ top.style.display='none'; bot.style.display='none'; return; }
+  const catHidden=document.getElementById('categoryBar').classList.contains('cat-hidden');
+  top.style.display=catHidden?'block':'none';
+  bot.style.display=catHidden?'none':'block';
+}
+
+// ═══════════════════════════════════════════════════
+//  SCROLL SPY
+// ═══════════════════════════════════════════════════
+function initScrollSpy(){
+  if(scrollSpyObserver) scrollSpyObserver.disconnect();
+  scrollSpyObserver=new IntersectionObserver(entries=>{
+    let top=null;
+    entries.forEach(en=>{if(en.isIntersecting){if(!top||en.boundingClientRect.top<top.boundingClientRect.top)top=en}});
+    if(!top) return;
+    const catId=top.target.dataset.sectionCat;
+    document.querySelectorAll('.cat-pill').forEach(p=>p.classList.toggle('active',p.dataset.cat===catId));
+    const pill=document.getElementById('categoryBar').querySelector(`[data-cat="${catId}"]`);
+    if(pill) pill.scrollIntoView({inline:'center',behavior:'smooth',block:'nearest'});
+  },{rootMargin:'-20% 0px -70% 0px',threshold:0});
+  document.querySelectorAll('.cat-section').forEach(s=>scrollSpyObserver.observe(s));
+}
+
+// ═══════════════════════════════════════════════════
+//  CATEGORY TOGGLE — does NOT touch banner
+// ═══════════════════════════════════════════════════
+function toggleCategoryBar(){
+  const bar=document.getElementById('categoryBar');
+  bar.classList.toggle('cat-hidden');
+  catBarVisible=!bar.classList.contains('cat-hidden');
+  syncOffersStripVisibility();
+}
+
+function selectCat(btn,catId){
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  currentCat=catId;
+  clearSearch(true);
+  if(catId==='all') renderAllSections();
+  else if(catId==='__offers__') renderOffersSection();
+  else renderSingleSection(catId);
+}
+
+// ═══════════════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// VIEW TOGGLE — switches between 2 views: grid / bar
+// viewMode: 'grid' | 'bar'
+//
+// grid → default tile cards (image top, body bottom)
+// bar  → horizontal bar, circle image left, 2-col on desktop
+//
+// Adds/removes .bar-view on every .items-grid.
+// Re-render is NOT needed — CSS handles the switch instantly.
+// ═══════════════════════════════════════════════════
+let viewMode = 'grid'; // default view on load
+
+function viewToggle(mode){
+  if(viewMode === mode) return;          // already in that mode, do nothing
+  viewMode = mode;
+
+  // Apply correct class to all .items-grid elements currently in DOM
+  document.querySelectorAll('.items-grid').forEach(grid => {
+    grid.classList.toggle('bar-view', mode === 'bar');
+  });
+
+  // Update toggle button active states
+  document.getElementById('viewBtnGrid').classList.toggle('active', mode === 'grid');
+  document.getElementById('viewBtnBar').classList.toggle('active',  mode === 'bar');
+}
+
+function toggleSearch(){
+  const wrap=document.getElementById('searchWrap');
+  wrap.classList.toggle('hidden');
+  if(!wrap.classList.contains('hidden')) document.getElementById('searchInput').focus();
+  else clearSearch(true);
+}
+function onSearch(val){
+  document.getElementById('searchClear').classList.toggle('visible',val.length>0);
+  if(!val.trim()){ renderCurrentView(); return; }
+  renderSearch(val.trim().toLowerCase());
+}
+function clearSearch(silent=false){
+  document.getElementById('searchInput').value='';
+  document.getElementById('searchClear').classList.remove('visible');
+  if(!silent) renderCurrentView();
+}
+function renderCurrentView(){
+  if(currentCat==='all') renderAllSections();
+  else if(currentCat==='__offers__') renderOffersSection();
+  else renderSingleSection(currentCat);
+}
+function renderSearch(q){
+  const isAr=lang==='ar';
+  const results=MENU.filter(i=>
+    i.name.toLowerCase().includes(q)||
+    (i.name_ar&&i.name_ar.includes(q))||
+    i.desc.toLowerCase().includes(q)||
+    (i.desc_ar&&i.desc_ar.includes(q))||
+    i.tags.join(' ').toLowerCase().includes(q)
+  );
+  const container=document.getElementById('allCategorySections');
+  if(!results.length){
+    container.innerHTML=`<div class="no-results"><div class="big-icon">🔍</div><p>${T[lang].noItems} "<strong>${e(q)}</strong>"</p></div>`;
+    return;
+  }
+  container.innerHTML=`<div class="section-heading"><span class="label-bar"></span>${T[lang].noItems.replace('لا توجد نتائج لـ','نتائج:').replace('No items found for','Results for')} "${e(q)}"</div><div class="items-grid${viewMode==='bar'?' bar-view':''}">${results.map(itemCardHtml).join('')}</div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════
+function renderAllSections(){
+  currentCat='all';
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.toggle('active',p.dataset.cat==='all'));
+  const isAr=lang==='ar';
+  const container=document.getElementById('allCategorySections');
+  let html='';
+  if(OFFERS.length){
+    html+=`<div class="cat-section offer-section" data-section-cat="__offers__" id="section-__offers__">
+      <div class="section-heading offer-heading"><span class="label-bar"></span>🔥 ${isAr?'عروض اليوم':"Today's Offers"}</div>
+      <div class="items-grid${viewMode==='bar'?' bar-view':''}">${OFFERS.map(itemCardHtml).join('')}</div>
+    </div>`;
+  }
+  CATEGORIES.forEach(cat=>{
+    const items=MENU.filter(i=>i.cats.includes(cat.id));
+    if(!items.length) return;
+    const label=(isAr&&cat.name_ar)?cat.name_ar:cat.name;
+    html+=`<div class="cat-section" data-section-cat="${e(cat.id)}" id="section-${e(cat.id)}">
+      <div class="section-heading"><span class="label-bar"></span>${e(label)}</div>
+      <div class="items-grid${viewMode==='bar'?' bar-view':''}">${items.map(itemCardHtml).join('')}</div>
+    </div>`;
+  });
+  container.innerHTML=html||`<div class="empty-state"><div class="big-icon">🍽️</div><p>${T[lang].empty}</p></div>`;
+  setTimeout(initScrollSpy,150);
+}
+
+function renderOffersSection(){
+  if(scrollSpyObserver) scrollSpyObserver.disconnect();
+  const isAr=lang==='ar';
+  const container=document.getElementById('allCategorySections');
+  if(!OFFERS.length){
+    container.innerHTML=`<div class="empty-state"><div class="big-icon">🎁</div><p>${T[lang].noOffers}</p></div>`;
+    return;
+  }
+  container.innerHTML=`<div class="cat-section offer-section" data-section-cat="__offers__" id="section-__offers__">
+    <div class="section-heading offer-heading"><span class="label-bar"></span>🔥 ${isAr?'جميع العروض':'All Offers'}</div>
+    <div class="items-grid${viewMode==='bar'?' bar-view':''}">${OFFERS.map(itemCardHtml).join('')}</div>
+  </div>`;
+}
+
+function renderSingleSection(catId){
+  if(scrollSpyObserver) scrollSpyObserver.disconnect();
+  const isAr=lang==='ar';
+  const items=MENU.filter(i=>i.cats.includes(catId));
+  const cat=CATEGORIES.find(c=>c.id===catId);
+  const container=document.getElementById('allCategorySections');
+  if(!items.length){
+    container.innerHTML=`<div class="empty-state"><div class="big-icon">🍽️</div><p>${T[lang].empty}</p></div>`;
+    return;
+  }
+  const label=cat ? ((isAr&&cat.name_ar)?cat.name_ar:cat.name) : catId;
+  container.innerHTML=`<div class="cat-section" data-section-cat="${e(catId)}" id="section-${e(catId)}">
+    <div class="section-heading"><span class="label-bar"></span>${e(label)}</div>
+    <div class="items-grid${viewMode==='bar'?' bar-view':''}">${items.map(itemCardHtml).join('')}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  ITEM CARD HTML
+// ═══════════════════════════════════════════════════
+function itemCardHtml(item){
+  const qty=cart[item.id]||0;
+  const isAr=lang==='ar';
+  const nm  = (isAr&&item.name_ar)  ? item.name_ar  : item.name;
+  const dsc = (isAr&&item.desc_ar)  ? item.desc_ar  : item.desc;
+  const sl  = (isAr&&item.hasOffer) ? item.saveLabelAr : item.saveLabel;
+
+  const thumb=item.image_url
+    ?`<img src="${e(item.image_url)}" alt="${e(nm)}" onerror="this.remove()">`
+    :`<span class="thumb-emoji">🍽️</span>`;
+
+  const tagHtml=item.tags.filter(t=>TAG_CONFIG[t]).map(t=>{
+    const cfg=TAG_CONFIG[t];
+    return`<span class="tag ${cfg.cls}">${isAr?cfg.label_ar:cfg.label}</span>`;
+  }).join('');
+
+  const offerBadge=item.hasOffer?`<div class="offer-badge">${e(item.discLabel)}</div>`:'';
+
+  const priceHtml=item.hasOffer
+    ?`<div class="price-block">
+        <span class="item-price offer-price">${CUR} ${item.finalPrice.toFixed(2)}</span>
+        <span class="item-old-price">${CUR} ${item.oldPrice.toFixed(2)}</span>
+        <span class="save-label">${e(sl)}</span>
+      </div>`
+    :`<div class="price-block"><span class="item-price">${CUR} ${item.finalPrice.toFixed(2)}</span></div>`;
+
+  const qtyHtml=qty>0
+    ?`<div class="qty-control"><button class="qty-btn" onclick="changeQty('${e(item.id)}',-1)">-</button><span class="qty-num">${qty}</span><button class="qty-btn" onclick="changeQty('${e(item.id)}',1)">+</button></div>`
+    :`<button class="qty-btn add-only" onclick="changeQty('${e(item.id)}',1)">+</button>`;
+
+  // Tags:
+  // grid view → absolute overlay, only rendered if tags exist
+  // bar view  → fixed-width left column, ALWAYS rendered (even empty)
+  //             so cards without tags still hold the 52px column → perfect alignment
+  const tagsHtml = (viewMode === 'bar')
+    ? `<div class="item-tags">${tagHtml}</div>`
+    : (tagHtml ? `<div class="item-tags">${tagHtml}</div>` : '');
+
+  return`<div class="item-card" id="card-${e(item.id)}">
+    ${offerBadge}
+    ${tagsHtml}
+    <div class="item-thumb">${thumb}</div>
+    <div class="item-body">
+      <div class="item-name">${e(nm)}</div>
+      <div class="item-desc">${e(dsc)}</div>
+      <div class="item-footer">
+        ${priceHtml}
+        ${qtyHtml}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  SCROLL — banner hides once, never re-opens via buttons
+// ═══════════════════════════════════════════════════
+(function(){
+  const banner=document.getElementById('banner');
+  const header=document.getElementById('siteHeader');
+  const hInner=document.getElementById('headerInner');
+  const logoW=document.getElementById('logoWrap');
+  let bannerHidden=false;
+  window.addEventListener('scroll',()=>{
+    const y=window.scrollY;
+    if(y>60 && !bannerHidden){
+      bannerHidden=true;
+      banner.classList.add('hidden');
+      hInner.classList.add('big');
+      logoW.classList.add('big');
+      header.classList.add('scrolled');
+    } else if(y<=60 && bannerHidden){
+      bannerHidden=false;
+      banner.classList.remove('hidden');
+      hInner.classList.remove('big');
+      logoW.classList.remove('big');
+      header.classList.remove('scrolled');
+    }
+  },{passive:true});
+})();
+
+// ═══════════════════════════════════════════════════
+//  JUMP TO ITEM
+// ═══════════════════════════════════════════════════
+function jumpToItem(itemId){
+  if(currentCat!=='all'){ renderAllSections(); setTimeout(()=>scrollToCard(itemId),300); }
+  else scrollToCard(itemId);
+}
+function scrollToCard(itemId){
+  const card=document.getElementById('card-'+itemId);
+  if(card) card.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+// ═══════════════════════════════════════════════════
+//  QTY
+// ═══════════════════════════════════════════════════
+function changeQty(id,delta){
+  cart[id]=Math.max(0,(cart[id]||0)+delta);
+  if(cart[id]===0) delete cart[id];
+  updateFooter();
+  const item=MENU.find(i=>i.id===id);
+  if(!item) return;
+  const qty=cart[id]||0;
+  const isAr=lang==='ar';
+  document.querySelectorAll(`[id="card-${id}"]`).forEach(card=>{
+    const footer=card.querySelector('.item-footer');
+    if(!footer) return;
+    const sl=(isAr&&item.hasOffer)?item.saveLabelAr:item.saveLabel;
+    const priceHtml=item.hasOffer
+      ?`<div class="price-block"><span class="item-price offer-price">${CUR} ${item.finalPrice.toFixed(2)}</span><span class="item-old-price">${CUR} ${item.oldPrice.toFixed(2)}</span><span class="save-label">${e(sl)}</span></div>`
+      :`<div class="price-block"><span class="item-price">${CUR} ${item.finalPrice.toFixed(2)}</span></div>`;
+    const qtyHtml=qty>0
+      ?`<div class="qty-control"><button class="qty-btn" onclick="changeQty('${e(id)}',-1)">-</button><span class="qty-num">${qty}</span><button class="qty-btn" onclick="changeQty('${e(id)}',1)">+</button></div>`
+      :`<button class="qty-btn add-only" onclick="changeQty('${e(id)}',1)">+</button>`;
+    footer.innerHTML=priceHtml+qtyHtml;
+  });
+  if(document.getElementById('cartModal').classList.contains('open')) refreshCart();
+}
+
+// ═══════════════════════════════════════════════════
+//  FOOTER TOTAL
+// ═══════════════════════════════════════════════════
+function updateFooter(){
+  let total=0,count=0;
+  for(const [id,qty] of Object.entries(cart)){
+    const item=MENU.find(i=>i.id===id);
+    if(item){ total+=item.finalPrice*qty; count+=qty; }
+  }
+  document.getElementById('totalAmount').textContent=`${CUR} ${total.toFixed(2)}`;
+  document.getElementById('cartBadge').textContent=count;
+}
+
+// ═══════════════════════════════════════════════════
+//  CART MODAL
+// ═══════════════════════════════════════════════════
+function showCart(){
+  document.getElementById('customerName').value='';
+  document.getElementById('customerNote').value='';
+  document.getElementById('cartModal').classList.add('open');
+  refreshCart();
+}
+function refreshCart(){
+  const isAr=lang==='ar';
+  const entries=Object.entries(cart);
+  if(!entries.length){
+    document.getElementById('cartItems').innerHTML=`<div class="empty-state" style="padding:30px 0"><div class="big-icon">🛒</div><p>${T[lang].emptyCart}</p></div>`;
+    document.getElementById('modalTotal').textContent=`${CUR} 0.00`;
+    return;
+  }
+  let total=0;
+  document.getElementById('cartItems').innerHTML=entries.map(([id,qty])=>{
+    const item=MENU.find(i=>i.id===id);
+    if(!item) return '';
+    const sub=item.finalPrice*qty; total+=sub;
+    const nm=(isAr&&item.name_ar)?item.name_ar:item.name;
+    const thumb=item.image_url?`<img src="${e(item.image_url)}" alt="">`:'';
+    return`<div class="cart-row">
+      <div class="cart-row-thumb">${thumb||'🍽️'}</div>
+      <div class="cart-row-info">
+        <div class="cart-row-name">${e(nm)}</div>
+        <div class="cart-row-price">${CUR} ${item.finalPrice.toFixed(2)} ${isAr?'للقطعة':'each'}</div>
+      </div>
+      <div class="cart-row-qty">
+        <button class="cqty-btn" onclick="changeQty('${e(id)}',-1)">-</button>
+        <span class="cqty-num">${qty}</span>
+        <button class="cqty-btn" onclick="changeQty('${e(id)}',1)">+</button>
+      </div>
+      <span class="cart-row-sub">${CUR} ${sub.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('modalTotal').textContent=`${CUR} ${total.toFixed(2)}`;
+}
+function closeCart(){ document.getElementById('cartModal').classList.remove('open'); }
+function closeCartOnBackdrop(ev){ if(ev.target===document.getElementById('cartModal')) closeCart(); }
+
+
+<!--
+
+// ═══════════════════════════════════════════════════
+//  WHATSAPP
+// ═══════════════════════════════════════════════════
+function sendToWhatsApp(){
+  const entries=Object.entries(cart);
+  if(!entries.length){ alert(T[lang].emptyCart); return; }
+  const customerName=(document.getElementById('customerName').value||'').trim();
+  const customerNote=(document.getElementById('customerNote').value||'').trim();
+  const isAr=lang==='ar';
+  let total=0;
+  const lines=isAr
+    ?[`🍽️ *طلب جديد — ${INFO.name_ar||INFO.name||'المطعم'}*`]
+    :[`🍽️ *New Order — ${INFO.name||'Restaurant'}*`];
+  if(customerName) lines.push(`👤 *${customerName}*`);
+  lines.push('');
+  entries.forEach(([id,qty])=>{
+    const item=MENU.find(i=>i.id===id);
+    if(!item) return;
+    const sub=item.finalPrice*qty; total+=sub;
+    const nm=isAr&&item.name_ar?item.name_ar:item.name;
+    lines.push(`• ${nm} × ${qty}  —  ${CUR} ${sub.toFixed(2)}`);
+  });
+  if(customerNote){
+    lines.push('');
+    lines.push(isAr?`📝 *ملاحظة:* ${customerNote}`:`📝 *Note:* ${customerNote}`);
+  }
+  lines.push('');
+  lines.push(isAr?`💰 *المجموع: ${CUR} ${total.toFixed(2)}*`:`💰 *Total: ${CUR} ${total.toFixed(2)}*`);
+  const dest=INFO.cafeteria_wa||'';
+  if(!dest){ alert(T[lang].waNumMissing); return; }
+  const phone=dest.replace(/\D/g,'');
+  const text=encodeURIComponent(lines.join('\n'));
+  // api.whatsapp.com/send always opens fresh — clears draft box every time
+  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${text}`, '_blank');
+  cart={};
+  updateFooter();
+  closeCart();
+  renderCurrentView();
+}
+-->
+
+
+
+function generateOrderNumber(total){
+  const now = new Date();
+
+  // TIME → HHMM
+  const time =
+    String(now.getHours()).padStart(2,'0') +
+    String(now.getMinutes()).padStart(2,'0');
+
+  // DATE → DDMM
+  const date =
+    String(now.getDate()).padStart(2,'0') +
+    String(now.getMonth()+1).padStart(2,'0');
+
+  // AMOUNT → ROUND
+  const amount = Math.round(total);
+
+  return `RAS${time}${amount}${date}`;
+}
+
+
+
+// ═══════════════════════════════════════════════════
+//  WHATSAPP
+// ═══════════════════════════════════════════════════
+function sendToWhatsApp(){
+  const entries = Object.entries(cart);
+
+  if(!entries.length){
+    alert(T[lang].emptyCart);
+    return;
+  }
+
+  const customerName = (document.getElementById('customerName').value || '').trim();
+  const customerNote = (document.getElementById('customerNote').value || '').trim();
+
+  const isAr = lang === 'ar';
+  let total = 0;
+
+  const lines = isAr
+    ? [`🍽️ *طلب جديد — ${INFO.name_ar || INFO.name || 'المطعم'}*`]
+    : [`🍽️ *New Order — ${INFO.name || 'Restaurant'}*`];
+
+  if(customerName){
+    lines.push(`👤 *${customerName}*`);
+  }
+
+  lines.push('');
+
+  // ITEMS
+  entries.forEach(([id, qty])=>{
+    const item = MENU.find(i => i.id === id);
+    if(!item) return;
+
+    const sub = item.finalPrice * qty;
+    total += sub;
+
+    const nm = isAr && item.name_ar ? item.name_ar : item.name;
+    lines.push(`• ${nm} × ${qty}  —  ${CUR} ${sub.toFixed(2)}`);
+  });
+
+  // 🧾 GENERATE ORDER NUMBER AFTER TOTAL IS READY
+  const orderNo = generateOrderNumber(total);
+
+  // ADD ORDER NUMBER
+  lines.unshift(
+    isAr
+      ? `🧾 رقم الطلب: *${orderNo}*`
+      : `🧾 Order No: *${orderNo}*`
+  );
+
+  // NOTE
+  if(customerNote){
+    lines.push('');
+    lines.push(
+      isAr
+        ? `📝 *ملاحظة:* ${customerNote}`
+        : `📝 *Note:* ${customerNote}`
+    );
+  }
+
+  // TOTAL
+  lines.push('');
+  lines.push(
+    isAr
+      ? `💰 *المجموع: ${CUR} ${total.toFixed(2)}*`
+      : `💰 *Total: ${CUR} ${total.toFixed(2)}*`
+  );
+
+  const dest = INFO.cafeteria_wa || '';
+
+  if(!dest){
+    alert(T[lang].waNumMissing);
+    return;
+  }
+
+  const phone = dest.replace(/\D/g,'');
+  const text = encodeURIComponent(lines.join('\n'));
+
+  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${text}`, '_blank');
+
+
+  // RESET CART
+  cart = {};
+  updateFooter();
+  closeCart();
+  renderCurrentView();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ═══════════════════════════════════════════════════
+//  UTIL
+// ═══════════════════════════════════════════════════
+function e(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function showFatalError(msg){
+  document.getElementById('loadingOverlay').style.display='none';
+  document.getElementById('allCategorySections').innerHTML=
+    `<div class="error-state">
+      <div style="font-size:48px">⚠️</div>
+      <p style="font-weight:700;color:#e53935;margin-bottom:8px">Data load failed</p>
+      <p style="font-size:13px;color:#444;background:#f5f5f5;padding:12px;border-radius:8px;text-align:left;word-break:break-all">${msg}</p>
+      <p style="font-size:12px;color:#888;margin-top:12px">
+        Make sure the Google Sheet is published to the web (File → Share → Publish to web).<br>
+        Or check your Apps Script getData() function.
+      </p>
+      <button onclick="location.reload()" style="margin-top:16px;padding:10px 22px;background:#1a5c3a;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600">↺ Retry</button>
+    </div>`;
+}
+
+
+// ── Hardcoded fallback data ──
+const HARDCODED_INFO = [
+  ['name','description','location','logo','banner','cafeteria number','rider number','track url','name_ar','description_ar'],
+  [
+   'Salamlek Restaurant','A Taste Journey Takes you back to the atmosphere of Old Damascus','Al Rawda | Jeddah','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg',
+   'https://menus.sfo3.cdn.digitaloceanspaces.com/6d2b2e02c779ed4ec9b7d47762f19098/1766742123-XHr5Webo73pJESPMzCE8iedowThZ16CYPVIrm4rSC08I232RXQodpAf1OqAP7K2AOEErGdyjuU7waemIfAuvd162x2zt4eERuqnc.jpg','971509517012','971522847006','https://wa.me/971522847006',
+   'سلاملك','رحلة تذوق عيدك إلى أجواء دمشق القديمة '
+  ]
+];
+
+const HARDCODED_ITEMS = [
+// [cat_en, Name_en, desc_en, price, offer_price, cat_icon, image_url, tags, cat_ar, Name_ar, desc_ar]
+['Additions','Potato Slices','','13','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','إضافات','شرائح البطاطس',''],
+['Additions','Rice With Vermicelli','','12','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','إضافات','أرز مع الشعيرية',''],
+['Additions','White Rice','','10','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','إضافات','أرز أبيض',''],
+['Additions','Plain Freekeh','','19','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/5abf4c4a1d4babeb0a8897cc6eedf0e2/jFOyWcn3XNfob0Gc6TmutUeyK4IXfoPkcwOo3jsBjamn3SKZMn7jj6SiRve7b1m63di7Nj70BpNpN7j1juLT0PtJHRnbP9WgK2iiq2BlUQcfNDE0nf3kA92htmwIav1CU1wnfQb64uVJg1MsOP4m0U.jpg','','إضافات','فريكة سادة',''],
+['Additions','Potato Fingers','','13','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','إضافات','أصابع البطاطس',''],
+['Additions','Yogurt With Cucumber','','10','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/9d6b25edf94aebcec8e816942c05d96d/ZJ2qM3uuEV02b8rq5T1IbnH5k5hLYreZzDgcG6JFL31Q6hZczLIgaVoAktWUAjvQiNIysD4lwr95YVAHSieF7jVLvX6MIS6gD7Y5GzDqUhZnGXfsybBSrIVXjlIyWRbg4rtHAdy3JhcKjk9SJCEgdg.png','','إضافات','زبادي مع خيار',''],
+['Additions','Tahini','','2','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','إضافات','الطحينة',''],
+['Additions','Garlic Dish','','5','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/3503f98908d438641ec270eccecb2ff0/WlrcYiPVOhg7FvsMN3xMIPNkNdOsLEHFceVvWFYbCmbFg3WGCDkt1BiumI2KgP461RdumImOdQsxOEjrxfgmoX1FBBAGj8sNAmNtLACzrgzVOqWfFPt7D0F0NtayaDXP4DQZhoG7i9xorrc41tqJwO.png','','إضافات','طبق الثوم',''],
+['Barbecued Meats','Feathers','','79','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/ec2378ec7ce4ca4707a8ec52397791ed/jsB2hOkwRDrUy4dN6vXBXRorDZjjdAX05XtVCiwPft3UHfaWAi4K2wdtF3hqZcrZlRYRdiSMhBnVmBz7MeOOAy5Dwh0le0O5L6xJB2QEzk6kuv60uYBPBg5LsX52rrCmUwa3OXpUCzDNWNDUAff7Sa.jpg','','اللحوم المشوية','الريش',''],
+['Barbecued Meats','Chicken Kebab','','49','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/e0255aa91f8271761ad17e021f41619a/Uk6HnZl4GEL0ggW21IMlTFaV1FqQ71sJlv5hUE97jFBnaNVBMxu605O71tlEJI0teJqfreFjvM2pjy84umDK73vStV7HdxmlUg6BqQUy3EOQguxCyyGySPKgi4JBewkzw8mBUTiCpxhgCu1YiptcIH.jpg','','اللحوم المشوية','كباب الدجاج',''],
+['Barbecued Meats','Shish With Lemon Sauce','','53','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/23658eee0b42d46a997c7b6739b45d4c/TfeMkE5skfhqQvFodoHiOMB5I8ZrxwzZqujZZKYAfNJqpFLU4p0D7jakm55AYmrHq9RlJ5viRogJDMxEwZAB2d6tx6kj0ijR0IO21w96MxTbPlt5d8t5a4MhiHZO8DypxKXSsSVxIZKWcDycJBgP2y.jpg','','اللحوم المشوية','شيش مع صلصة الليمون',''],
+['Barbecued Meats','Salamlek Grills','Family Mixed Grill Platter With Freekeh, Rice, Chickpeas, Muhammara, And Baba Ghanoush (Serves 4-6 People)','262','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/ffa3bd2807c6b2787a3018366507d5a8/EHQ2v1rErGPFJIJN8SwG2S2w1zHBSKfuRe4CWe5tAChg1wk4OELol2HLxQLNRCmip7aKqO2u8VyT7iban4xIROpSHj7DJFWqxOGXBmzPPEZn90FudpRlqsZQ24EVmxWT28Bd5HNMxsyFVw4ZUmfBxm.jpg','','اللحوم المشوية','مشاوي سلاملك','طبق مشاوي مشكلة عائلي مع فريكة، أرز، حمص، محمرة، وبابا غنوج (يكفي من 4 إلى 6 أشخاص)'],
+['Barbecued Meats','Mixed Grilled Meats With Free Choice (Potatoes, Rice, Freekeh)','','64','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/70a02c73869ce93ea9ba46a995fbe7cb/J1m1uJNppVyusWvGNLmRqbTaKl77Dhw9zLB9QWgx9w5ZaDgdv32Z5IsqtzI665nT4uB36F1PQlrHOoNEHW0dvrh3xBQgwSAhWEJJfh1PZK9xnvPtdYwvlfgxhacu7FsobJvqTlJOkonMueaY8ZrMso.jpg','','اللحوم المشوية','تشكيلة من اللحوم المشوية مع اختيارك الحر من (بطاطس، أرز، فريكة)',''],
+['Barbecued Meats','Meat Kebab','','56','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/5a5742fb4ab5e75028cef8a877a5fb73/VyY0eHhZ1ZgMxyiTnItQt7ciuXjxycX84u7DbXKgc9ZJNBQu0U8qPNt7zBpGJvTikl4yd4q7NX9GNLwQzkhvNY2kpWZODknjpuCfsNvLoZEQkqnTr29aqB0Eyh2ZxXlk4p2kKa4xsdxAQ8LEJNvF6f.jpg','','اللحوم المشوية','كباب اللحم',''],
+['Barbecued Meats','Meat Pieces','','64','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/9223e731dbb35d594438e421d82cd5e5/yujbVCgb8XtHeQRrFgHNECUnzGqtxSAvIyRld2Evvnr6HboKefW7clcTIStqeKl3srskVxE6Vx2Z9CvhhgbRd9OiWYSdnvHlnIOXpBUPyIDwX5FCasBisXpVt8qPAxUIQA0P6hUY9txIV5ZrzgeY2k.png','','اللحوم المشوية','قطع اللحم',''],
+['Barbecued Meats','Shish Tawook (Freekeh, Rice, Or Potatoes)','','49','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/668defc1418af89b993afd032ef05dac/veUNSln8vNIUYnK3UmZQEx0h7HHyOFuim39olWdD3q5vqutFzE5XJxSiE59yfnGOeFca6tN53p4Ur0gn8czOJH2LcUmb4DaMqiIcrZ8tkVOyuowd3u0BVuDhID3gc9k8NH2WGEGNuB9OhV9BK3Q38G.jpg','','اللحوم المشوية','شيش طاووق (فريكة، أرز، أو بطاطس)',''],
+['Barbecued Meats','Half A Charcoal-Grilled Chicken With A Free Choice Of Rice, Freekeh, Or Potatoes','With Special Levantine Seasoning & Lemon Sauce, Potatoes, Freekeh, Or Rice','33','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/09d41c528b09f4f2cd5b1f22df144787/Q65V52tQc8RbGRUBrzYH5sRAwEKSyybAAI1aKabGLfbxjShBr1sRJ39gelcVEuFCa3SC6UEhIJoezfL0kh7i4nGsCpohXOQxBZLoepyCVv0YcREPkwsPBchknIi3KlYKzi5N0m8UYZAqieuMMdtyGP.jpg','','اللحوم المشوية','نصف دجاجة مشوية على الفحم مع اختيار مجاني من الأرز أو الفريكة أو البطاطس','مع توابل شامية خاصة وصلصة ليمون، بطاطس، فريكة، أو أرز'],
+['Barbecued Meats','Maria\'S Brides','','35','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/8e6cbe0fe5640ed65390a3098defe1c1/o29MXKQghXa4RTWe9fPwEn9V43fy4IOoKnT8FZ5ezJ7zQNPgDOvPJ8IHPDU55uwfw7kfD3CUjqbOrcCNKbQ5TogRrillK7EsN7zJvv5VpJuh6zzgRbs21K8p2iCOg5ug0KySUT89tusqVOtjA059rB.jpg','','اللحوم المشوية','عرائس ماريا',''],
+['Barbecued Meats','Toshka Brides','','38','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/f169cdf060f8ea05327a1156dd4c0416/NyHQ27B02kceeHgrsshFUEG4ZITw18MabXaIRrHQPdg4zwffS95i1xOvNM88IfXpMb3MnFZtheL072tba0aLt9WlLc1ZpWjrtWngXnGYceckEwNUvZs4P0BzwQvpGFq78o38CDXBM3owjEK5ObA91L.jpg','','اللحوم المشوية','توشكا برايدز',''],
+['Coffee And Sweets','Umm Ali','','16','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/da6782cd9777606904430785331079b5/iUVpQjfu9yq9efwIfhcMdxfcT1JBJlXxWAcNONAhIrotlPozYXXLGug95XKvFrpEowaNgPIPQFh6TjbgITc27NK30Wgw4UC2aMIg5Gn85aeTSz6CWlwlyRI7BpoIhCcAuZ7txdTq8ly012td6JT5vr.jpg','','القهوة والحلويات','أم علي',''],
+['Coffee And Sweets','A Pot Of Tea With Milk','','29','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','القهوة والحلويات','إبريق شاي بالحليب',''],
+['Coffee And Sweets','Milk Tea - A Cup','','5','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','القهوة والحلويات','شاي بالحليب - كوب',''],
+['Coffee And Sweets','Syrian Herbal Tea - A Cup','','7','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','القهوة والحلويات','شاي أعشاب سوري - كوب',''],
+['Coffee And Sweets','Creamy Fruit Salad','','38','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/6ad33ab14f908bd252705867ca3a072f/Ywm7hN4BdGUghz9jlzM3Fq36bn8grC9unlnC3pIidfNRBwi1yds39PfbqJxDf2k8xrfU1rDbxVaZbl9RCn2VcN1Mx9vHgHnmzjMemiH8vAsdX08qWMpH7D2mDq2iAX1iSmoHVKT7ofjV83VIuaQpmZ.png','','القهوة والحلويات','سلطة فواكه كريمية',''],
+['Coffee And Sweets','Emperor Seleucid','','39','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/1d862c1ca09e3db77b09a9977e341ecf/aoxHE7uSvjKrq78AM6K1XLT7SQr6ltzUKiLxjRqLSwjCkYaSdsEr2uhD5BTnjfJk4iQce4f8r90e9zng833dDppx3ReqcBrBOWEyA5X7io1UyPXfKEZPNllHJB6sh9yNtvih02VUmmGwwGalMXGlOL.png','','القهوة والحلويات','الإمبراطور السلوقي',''],
+['Coffee And Sweets','Cotton Candy','','32','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/6b168ca27030e95dc8ea67869996c0ef/57mpYQL4KAIIeysq4gaRJPIoBX1Qb09o6RWDRRea5byUy7XRcpABzHVV9XOfZYtVNFIqQL2aQSnawREncQulLXGmiVLzCEDK288UOv42tOZm4AMKgXOJ7pEus0KIZYjgdy5jz6kTlfS1BE46I2ziJB.jpeg','','القهوة والحلويات','حلوى القطن',''],
+['Coffee And Sweets','Nutella Fruit Manousheh','','19','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','القهوة والحلويات','مناقيش الفواكه بالنوتيلا',''],
+['Coffee And Sweets','Syrian Mulberry Manousheh','','19','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','القهوة والحلويات','مناقيش التوت السوري',''],
+['Coffee And Sweets','Cream With Honey, Strawberry, Pistachio, Chocolate, Ice Cream','With Honey And Pistachios','36','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/35011b933ea9bd884bdbd201fdbf21f4/L5PKnf6cmvJYU0NNi8tOJQSq2t0HgptaUoYPnh92HqxjeQzCpx3j54Sr41X3bW1kEO4y34SO2voth9qzETCybmd0Bx12Hf1LAdeV9tIWp061lmfBYncSKmGCyQptlKI1pYH4CCHF5YQo3UCg3fnRED.jpg','','القهوة والحلويات','كريمة مع عسل، فراولة، فستق، شوكولاتة، آيس كريم','مع العسل والفستق'],
+['Coffee And Sweets','Turkish Coffee','','15','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/5347a7172226e7be25f1bd2cd2f271b6/P7u9il0hvZ5iFQ11gR1hejMlbYl9ZhLERJfHWB3uUOTHNfYZbK6RA5kgQtVQTSWWCsMFEsEdiQK9eJHmzelR4qX2N6i1pkAb7dbIXJTTtDrcZJnitgI1CZIEdxeyaPZkJE21JByMjSwwzAYYxi2CXP.png','','القهوة والحلويات','القهوة التركية',''],
+['Coffee And Sweets','Espresso','','12','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/78a67af6ff019f1df48b4143fd8706a6/mAU9m01eCgjkXzzfv11O7wcPpBZ9u6KoVUg2vgJ4Wlk2635yLezQ6rLz5iulqb8axjyIyt2IbTAUHFYH33vFlz1YAK8cHyoNxhUkTVML2rEDfuoO5IPbLWS7ByBIfN7eeuGoGuBKcDUkwpEDzrcNhs.png','','القهوة والحلويات','إسبريسو',''],
+['Coffee And Sweets','Americano','','18','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/6cae52feb1d4f6c19566b59070ca83be/WzwBqZAw3PyieZvKztRTcAy0J8Rf48OI4NqfpkK2IKfvkCp0tpbDrvedEa6gdRtn1FUrToAg12nvgPbWIPUuLdonCHdDevseCAENQ5TRwjbRM1nf1OTCpn4ksOOnmp5HDaLnzBIHY4PAIqKc2hqlTI.png','','القهوة والحلويات','أمريكانو',''],
+['Coffee And Sweets','Milo Surrendered To You','','15','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/d666989eec90fcb4a443dbbdcd761400/UXJqcD8sf5pfHmcmbxWkudq8WGsViTKovXeJ46Gu4OSRKGz0eIR49Pt8dz1VcWab5A98YscncCLiXZXeE3ibQENjGVBv8ha8oR1Ilo3sRlQVxNb6RCk4t3VAp4gFp7t6jczq9Uch2K4nJjwGNMTkV0.jpg','','القهوة والحلويات','استسلم ميلو لك',''],
+['Coffee And Sweets','Cappuccino','','15','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/f61eca6d268effbfa5aa31d01b751db0/AArMwtKo09j0r2a8zSlUivfcOVM2H7YoEyv1ARpenttcjDtbHWLOYY1X9lrLriuxQIYf6M8yKISCCsMqAcWfJJApQA2svCRdqQFRs5USDTcAZtjrenFfX33tjkn8rhgwxVqKu42l35PHsyQvR3Z2Lq.png','','القهوة والحلويات','كابتشينو',''],
+['Coffee And Sweets','Tea Kettle','','25','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/7af29de4998f16722ea34ae3770b7964/MXHGECCF07lrGcbKuPqDvi8cgD3dXoWuYaTxwf3SMUVR5GXPasZanHvLKSJsNV2mwnGJHe5ILxPaxbjqFOaM81NybrHFBhWQi63QPa2Rw5admZmUO6yzik09PHcAhHzfjLHldFmdZgkOxFf7vKiMym.jpg','','القهوة والحلويات','غلاية شاي',''],
+['Coffee And Sweets','Syrian Flower Pot','','29','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','القهوة والحلويات','أصيص زهور سوري',''],
+['Natural Drinks','Mango','','14','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','المشروبات الطبيعية','مانجو',''],
+['Natural Drinks','Pomegranate Juice','','14','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/08374dbff172fb7383b27e2fdefc8749/8PhjHZ4GMdvJKFmBIVo4QRE3RbmgqJjPGlvS4tZaBFcvvw8Mb6M7tXZsMhGIa1tmxcOeQYxZJ0bAak1k4nlJ6mv4KamBV7qRkcrFbbMu2fS8xM26CqIoU94Pmw7iPfTUshfaydBdpDVC3h2MzK2A1c.png','','المشروبات الطبيعية','عصير الرمان',''],
+['Natural Drinks','Lemon Mint','','14','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/f5f8659d66ad335e3c56f3a6f140d18d/gMwot4RI2Fhk7ULx2ekOuptbu1S1Q9eslqDTVfoTgrhmREFQ08QnQ8eKjlPkPXJHNkQ6Z6Ps52iNChmsdCDmEbi2BB6jpJA2BKb3UYpGiAOa5bUlUI7TBdGSKj8dgCxY4KQlBCxAfG6WzKiaumVult.jpg','','المشروبات الطبيعية','ليمون ونعناع',''],
+['Natural Drinks','Cocktail','','14','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/fb4a6567ed4083d677fe02ca3130b779/iyc0qJEMXo0oqlVKTq6Ym1PhJMHdP6CXPxXmuxLZUGEXGbNZZ4EsOZ0BBMvtLEyrIlNFJim4kTagnpKBJtQUpbw8yKnzqAb7rDIhiGpHjd46n1bsKRSeHisvMh1QsaK9tNFFTKpFuG1Lkys6mTdX6l.jpg','','المشروبات الطبيعية','كوكتيل',''],
+['Natural Drinks','Strawberry','','14','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/3b4ce5dae30048eed5aba442be6a435e/iWEBsbSQcFdFYBhGkpKhVLVN6sNtxZ4ZuEYXPmVw5vfkqZkwp8CbEv2xxlCZ2pnVs20NhiIfC6YaR59HjtAPLLa9uf0ukhesLMaCFpyEWsiHK3WNjuKJyxoPnnI9B5Je2gp3wJc0UOdEcKuIkR1G8d.jpg','','المشروبات الطبيعية','الفراولة',''],
+['Natural Drinks','Syrian Mulberry','','14','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/28abc224825368bfa7a3ae6bedac055d/pECVPN0Yp9lKj4xNO7WJK85CtI7OBTI6cvu3BPMzqpfl5bXoWx8FF13fyUoRLYycEXhf73g4CsffgN8Y53xTWLSUJONmq9eqAVgsQYWGRh4GODnop5H1GlfoyhPMh6ZdVIf1Gm1whUXkwYiIZw4Xex.jpg','','المشروبات الطبيعية','التوت السوري',''],
+['Natural Drinks','Hibiscus Selmlik','','14','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/30fad42493103962ccfef376455e8530/c5FZmMpEmR1bdLmjpodzqrIRw4UQQlAd0q1ygA0JxSEzs7LpKRsnETaEhlFYWOkoM9FEtwjqfTUattkuMi183066qDB9WoLDptpvQiBjaacPk3rM2O37ZuiTrPbpPNFgmh3z7LH0TLmB54fV8KxxLw.png','','المشروبات الطبيعية','الكركديه سيلمليك',''],
+['Natural Drinks','Orange Juice','','14','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/75649437cfbd9388c40b1af67d87643e/w0yoEElBJLe42I00x2zDfuzJQO5TL2r2DJecvlzIRmwj5GdtFj2rVC8nAxvIjHBJTbtpDe79PIqBwGFXuWhhdmKwxD4Is6w6DFxe6K5PZBVzSpxWvxD6zZeBVL047k1mlbRnaitP2gnjHSCeY7jKJO.jpg','','المشروبات الطبيعية','عصير البرتقال',''],
+['Oven','Kibbeh In A Tray','','59','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/331901c48489d6556c9a8ecddb8477b8/Cjyvaa8LDNBczY05vhOGIKVDGLyYmhxLxFTtT4eftpVc6yZ248XRJSmBcszVChYCqUds2z4Fsl9b2X8di2lkSqVvkX64lpRDVyTwEhhubdJLae2ER5qP0PeORNXE7Sg7BlmJdfrgQcXVa54cmxvZqs.jpg','','فرن','الكبة في صينية',''],
+['Oven','Pasha\'S Tray (A Dish With A Special Mix For Selmlik)','','64','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','Best Seller','فرن','صينية باشا (طبق بمزيج خاص لسيلمليك)',''],
+['Oven','Pomegranate Molasses Plate','5 Pieces','25','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/2b87bd2869200ee5f3468fbd18e6f7d8/M8uT8HCaxrvclRJZlpNdnhgF087V3v5Sn71qeL4In0CyOUSGFmMpatfiLs0393JV6yMQLUoAGEQadtF4Dhsx3WSMvdZqAsLWEHM52DRNz6pR62IUWbkX0VwUpszlVgKHEyZKfAfwmHXZ52zQxZlOOn.png','Best Seller','فرن','طبق دبس الرمان','5 قطع'],
+['Oven','Tomato Plate','5 Pieces','25','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/4a0e23111dd51cbbb40c9b62b9f18c26/MWlH8GOrXxqkVONS4yAWXe9mo2SUV2JZv9WnHhpvwf0nE0Dopr2RcltE2Fq0SJXeR7ucjBOlpv9zckitwB1YeCtD5aztrCxn799o3slHAC1ew2lh2WaOC1WO1xRQI2HbOrEh282rkZ97vbJI1CTHVi.png','Best Seller','فرن','طبق طماطم','5 قطع'],
+['Oven','Meat In A Tray','','53','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/9ee53432a2d093b0adf60cd90a1161a6/eljQPZ59h98ndmzzeGb9AHzBUWb8wV3VYdXuWmvFECDVloilOrKqwRQe1y3j0uEDwGcLObm5sI75i5OcWsLCOhiCfDZOsXq09p1yefxbHtlW9LB6aVdoH0E2AjhFH6xX151TaXcmjfg1HZHBPpxZ6F.png','New','فرن','لحم في صينية',''],
+['Oven','Chicken Tagine','','62','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','فرن','طاجين الدجاج',''],
+['Oven','Meat Casserole','','62','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/6caf04b35876a6ce31b42df632039a49/OiJkWlHoAGaie1opqI33oSL7dbljvOkIs4CrpKqVYXw8l92zG24B7zKQSBw85x61AVI9kERsIOddb2kRQHVYlAZ7U49vwtgUL6cY9DvO1Z2e1TFkK5gF7jJ5ANHC3h1RKgs2LnsJJk8SSAog6ubHLg.jpg','New','فرن','طاجن اللحم',''],
+['Oven','Slices On Dough','','38','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/06a30f4d21afc587e3f94577cec558e8/bvB5okIJ6dr0jH8DoYJaLVptinTLeQ9B3MKQL1vI12xypIyo84BrAz36SQXYp69JfHUVlUad4R54Iqac9IxMS6bB7Vz4SXw7yG3jaxfYI3I1DIfdS4Tr84PjDuQHvoOlLz1SV1tPyz6CBorjy87gF2.png','','فرن','شرائح على العجين',''],
+['Oven','Turkish Assorted Manakish','3 Pieces','30','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/b04f8340ca7a114277d3e2b760de3142/RXbZ2xTCPPjdSxEC5BZeumGzilWDpQEYdY1CcPH1Y6Xr1KqEcRY6KJWHnVVHmkjBLJHVQNXwgRGM8lNzKna4R9o72ubjZn1Bq9HgnQFOhU6NyVDhXueA6Kx29kuZbbqhSpMvEB1zLzpRJovaCQyXVP.jpg','Best Seller','فرن','مناقيش تركية متنوعة','3 قطع'],
+['Oven','Akawi Pies','4 Pieces','22','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/1a56ca3c984ac1ff4d22e450f408f1fc/zpg2YnSq9hQ6UDLkTv4n5cuoHRcZ72Sfcg4d4Zv7nLKPmVZpTZzJn8VNTAmEl8pmuGpuAvjSbwl1GMOmHdxo5xvZIUYhvdBOKHfNImXGXrNMShK9n71USmoTWdf8QWZQDMWX1GOkyAKALoYMF7wiar.jpg','','فرن','فطائر أكاوي','4 قطع'],
+['Oven','Zaatar Manousheh','','16','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/bae2b32e59c03e7b5ce3fe39ba8c5483/n0PhFsO1YLjWjIxVgXdEJlY6j9nTQfzHs4Wk5qsB5oTatIFfCMRPYaE5a8G5TPtBVi78pxo38MuGnUOy5scV4pLLEV63RQtMe7E8xd69HrX5YdVWo7bdzujaeqdheOWlh1C3msDEIldnndYVduRpMx.jpg','','فرن','منوشة الزعتر',''],
+['Oven','Roasted Cheese','','18','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/5045fe2109c6e5fc0c5bcfb524389dcf/690344Y25nJ9kSC0tOPZDRJw0Or3hrxwt9aAJuy9SDBGPLlx5wn2djthMfpa1XayqMFphThG1DI8f7Fc6z03MJQnhSazUbQ0Npb3UoziZOpKZ8YzjOWGBaCb3rkSvN8dSSvpvZfjvsBEMTCsnPDcv8.png','','فرن','الجبن المشوي',''],
+['Oven','Pepperoni Pizza','','44','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/a8c9e8da0c9033bc9ee627ef14d4ea13/xIBnLYRFKMkHIof1C2WMDIVQIUnB9gAoSu8STwum6cqbX3vO2imyDMx1ARw3Riq8DyxADKkY9uuWu6jUFePUHqM1Kr49wpjLvVuZx09gbw976j02rokldcNAMVFFb1WEm7U8GsO5kTZ95kqDn3OkTQ.jpg','','فرن','بيتزا بيبروني',''],
+['Oven','Salamlek Pizza','','48','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/cde7e22e968a76804ce61e5993b151ba/CYlbB9oCUor7BtLneX1sZyo0XcIMmLX5lVFHn0T9uv39FSgNh2ssTHpCRBURbZt5Abw4ul1A7purIKGpZ8X9pR1jMVtoYksJUJPBUHBDYoOKlo96DBBMC861Wu2p7W3Z9UkkwrzN1sOUWOAolEAKN1.jpg','','فرن','بيتزا سلاملك',''],
+['Oven','Vegetable Pizza','','43','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/244d07ffe0ac67d388a6aa46d100d328/0NptxySTCkNjaSKlqOeV9s6v4KQZPlTOUIhBOTMp07CACx4qvMjTsWvHPn4A4o8RzYkIcWDXWOQqGJfju9SZmmOjok42MTHyIO8Q4v3CufqPPR1CQiUDCQm5hYTwEivDj4j0IB1ySaHvJ3M7jIPGAI.jpg','','فرن','بيتزا الخضار',''],
+['Oven','Chicken Pizza','','44','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/dfda60b9b08b3b170f821877c114948a/y7wBYJI57pTzlnBOV9N9obK3btDELFcYVShq3ksgB9KBpKT8KyW8BRvRt5ovj0jR1VhGnhO4LuT4rHPsWX2nk7uyXaC8vlH03XXNT1NxrnfhnfOsUbf2214G3N4uetwOHWsPFZLEsoG0wmp599lVM0.jpg','','فرن','بيتزا الدجاج',''],
+['Oven','Margherita Pizza','','40','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/3b97858241bd24ddd0accc1ebd4d0ac4/Ue0GK5HgXhPRjPfGFM1mUJDESLcFGHP1oCp8EYDS24tk8BA0LCy5V1qOYsQJlYcLHmoqDL0HcjB8RQnWvrtFa5vrEYdrY6SdwUSw6i1wO7eoqCHpFClhWNVavBGW84Y0FjcPug9dXxGNrCADOnUKri.jpg','','فرن','بيتزا مارغريتا',''],
+['Selmlek Kitchen','Mujaddara (A Dish Made With Mujaddara)','','53','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/4a43e33a27fea4da3285dd069933731c/w6OZ56Qmd7ZlTNE3i7kbriZjYmWoZGMzP9im3B0hyfRmaLubv1rNTyV4FyVOTunM7tlHqsrGhuCjM0NpeyJfaX2qHmvn9XaJQD3coV5tKx3KYGbf8owxINshlniO4pEoGSUM3ICr9ewJZgw7tGH1hc.jpg','','مطبخ سيلمليك','مجدرة (طبق مصنوع من المجدرة)',''],
+['Selmlek Kitchen','Lemon Chicken','','33','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/36a07e64001971bab723e25b3d387773/boLUd0oKRAgpH6Qcc5YdxstD9oBoCJfk14UTBjLKNzQdtwdinjxuGcNwD5COtC2f1nQBZyXZOT521WqNK9RX1AipMPr6m88vdKoFIlBL1HZEZJXN0NJzdmG9zjHwYTucrpX6AQki16MAMhtYrSQMWE.jpg','New','مطبخ سيلمليك','دجاج بالليمون',''],
+['Selmlek Kitchen','Sheikh Al-Mahshi','','72','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/48fdda3b194719264a827d71a6660ef2/he3dROt3NAlMN2paTf4OKAMasJCPpgzuNOq99siRqIpK1uISeNJOlPw7XlwoeZjxMbdMwaYTmzjWRlr90AsSlBNNTGnuQ9ue3RDIt8N1hiawGDQtbnmPPZItHTxCLmy7dn7UMrhGLOJOjBjPb3cor0.CR2','Best Seller','مطبخ سيلمليك','الشيخ المحشي',''],
+['Selmlek Kitchen','Freekeh With Bananas','','64','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/637434bb6f2e1ea157237ad860a2ec39/fOrDUwwp2fxaRIZaRCxhP0NuHoVcDWyD7o2ofhXI9zpYf6ZSqmx5IFJbd0159RPmC620OHChW5ocMYwwtyaEIgtV53w6ywVmOaDXcRJD8SlXlBnRBApxazSCiBNYz1Z5EGbR1sor0CHuvNQYLo3bug.jpg','Best Seller','مطبخ سيلمليك','فريكة بالموز',''],
+['Selmlek Kitchen','Shakriya','','64','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/609d50b6c3a2b93a49f2d06b1a6c2612/gK23Nm2SQCRW5CcIGkMqxdV9ixgjxAvzHGvxuOfn2itVf1s9ivkWOBC8oKIgTA8W0FlaXSbCnGZbUh9ctQITiznG0Jd1dtVR4q2XxFKdmK3vgo9ecOnQuhcqCXmcXzkKuwxX8FcvDIeT2wCkGBA0Gr.jpg','','مطبخ سيلمليك','شاكريا',''],
+['Selmlek Kitchen','Shishbarak','','53','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/2049d6a913a3ef591eef19a27139472e/qq68VqGRdHmlwWX3PG4RyhkZye5qVq8i4XUjXaM7r8F6SlK27xCz2qsIc1hoLMLKF1pa1blkQHXSm5bKKYkL31y4vCignPtmGWNs5im4zwl97KIWoL9wkC7uzLhw8pvBRdhSBccnHcgsqVsCoVbvdq.jpg','','مطبخ سيلمليك','شيشباراك',''],
+['Selmlek Kitchen','Pasha And His Soldiers','','72','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/02c81e3fa830d6792bdce9d6d2779dbd/WfqbdBbLB4AoFxaCTyTfU5x5FBhznRv9tUvNP1qRxJyKROG4EMqzHXKkfFWErQMZtdnTk5PoJ97pVqbFbGHrQbfYhOK54hm9pb1uszg0SmRi5isvL4zh29Q4iD8Ym5BbI7r1i4Bjxz73XMNvthxMaa.jpg','','مطبخ سيلمليك','باشا وجنوده',''],
+['Selmlek Kitchen','Kibbeh Labanieh','','52','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/d4172ac6a074ea8289a1c12ed5807950/7aHI5B3SwB6C4vAgZLaGwlpqiJhhoAgdnNhWtPB7wqOM6qdsjLVoaM1ErH9egB7dChM79n59358gA1PdOTxMyvm1dYKEBHRBsxvQNQjz7nb6rtQn20OlTk7qvwFT2k2HVs2FReY8q9XmmbgDnAqlxw.png','','مطبخ سيلمليك','كبة لبنيه',''],
+['Selmlek Kitchen','Scallops With Cream Sauce Or Lemon Sauce','','49','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/58abae1264405137ee76cd7c4bcca6d1/7YHBwqBwSbe1IV345PGFmdhdE64DvWO5l9zw6KgVZdaBJ2IdJ65Lp3ZteJIl4uteQS2FfJ4YEvnLqAuNWo9Q9UYmLvxgS3rB9EkoIuNyGNWhMESslczeQOpFTfNB1hJK5BSFXTa3klDe2oGZgCEjk0.jpg','','مطبخ سيلمليك','الإسكالوب مع صلصة الكريمة أو صلصة الليمون',''],
+['Selmlek Kitchen','Fettuccine','','48','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/86712c9df55a08c4dc43c2fc75fdc18f/RnEA55igaK6un1X2pRSXgqZ8Npk5BhUMnnZNO8WJqqsSfKoUzt2A2yDne6KNfuUoAsDYmHP0YTdU9eis40ui7L7YcBzKhlq63nnHT3Mt1wcigOMCVNgZFcRdmNSafKQkZ1aFJg6Cr4VC4bQ2TOL3jj.jpg','','مطبخ سيلمليك','فيتوتشيني',''],
+['Shawarma','Arabic Meat Shawarma','Local Harissa Meat With A Special Levantine Marinade, Courtesy Of Salamlek Restaurant','28','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/ee9f333fe4544eae4234cb53ac33fab3/BkSMvkT3lcnHjucXplAhPqCRjtCs8fJUwCOl6JT9hwbvwjOiLbBRvyTPaDht6jyBIeBw8WBqUyLqIZzAWOc0pz6y19VuzyRSIEvD7eCfeRWrTfY8NkAH1LRPchfBi7DelKnTIeAFt0eGozX6khiePJ.jpg','','شاورما','شاورما اللحم العربية','لحم هريسة محلي مع تتبيلة شامية خاصة، من مطعم سلاملك'],
+['Shawarma','Meat Shawarma Fatteh','','35','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/09f50600d5def6b8264b280dc370df9f/P4uCll0FNyWiuzytW3XVXogT0JQULcN4bTSJlvlqpaLQ3pdWHORQCskT1hdsUQSejH9Ak7fWnUYBruEyigXAb0jO363tJeVbGZYMC7ka2XcRl5i9xTHxncm0T5pgg4K5l5Q6WeuxnyZnqgamIu15Jz.jpg','Best Seller','شاورما','شاورما لحم، فتة',''],
+['Shawarma','Meat Shawarma Fingers (Cartridges)','','26','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/a1e7b02222bc4eab9d90a83a0085352c/EmPbWOC6vXliFxjFDhN9CavHAT90ZIqPmQlkj4Qjpepu9eQDpDp6X4lC3JEOnh49l8iSVioQXTwZMg1XcPLUfaSzDKtQgzSGzjfBKkR4MMeneTU9lF4PVZRj1qYPaLrn6FfxB3GMtlUizQBfQzQzaF.jpg','','شاورما','أصابع شاورما اللحم (عبوات)',''],
+['Shawarma','Arabic Chicken Shawarma','','26','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/e7dbc23182db59beff3b7c9981b579ac/1pJ1zCgHa6Kzgwc6mXo2bV0jKKLxOMZXFzzRZ8AvwIm0GJnaSB4xQOtmzCJG4dRsCWSdSzTxrtb9N3XqLkQc2T2RhCqNT45l5ViHAKiRiVNccGiROqJ1yie8g3NBObAzzQy8yOLDdmJ9RTgcyn9qUJ.jpg','Best Seller','شاورما','شاورما الدجاج العربية',''],
+['Shawarma','Chicken Shawarma Fingers (Cartridges)','','22','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/328d7805a58e7dc1aee0423a98e996a7/4N5SS7hu0OGwCSrSIjU8U0Drn6nvETXLT8bDUM2zOTHft58rOI7uenNacLNfhhhb3hwQAwyE9ynBN9VEeMvyZ6T2ma11COEPwm1yS6zKGoWR0aSn6sv5DPHRpqXfcKG8ozftKTHmkVNiMw7UIQROKZ.jpg','','شاورما','أصابع شاورما الدجاج (عبوات)',''],
+['Shawarma','Chicken Shawarma Fatteh','','32','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','شاورما','شاورما دجاج فتة',''],
+['Shawarma','Arabic Shawarma Mix','','28','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','Best Seller','شاورما','مزيج الشاورما العربية',''],
+['Shawarma','Chicken Shawarma Sandwich','','15','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/0c84e6c47349fc7a45302a116a0aac89/WiczfAQrMKxZsmrRrBfgnIKzELuTeKvKkgGs6jIYJAxAgX2tSRGafhBXlKAx1EVdfb7xI1kcAuWbpym8dW89Dvpaxyep4aFY1MUHCkBKRF63MZGgm47l5tFyhpb9QROtZnUbkbFjF8WtEfKFqmd1E4.jpg','','شاورما','ساندوتش شاورما دجاج',''],
+['Shawarma','Meat Shawarma Sandwich','','16','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/a6be7133821357cf10321862e9b4aa25/HlxxX0wMLJtxKz7aeiaxXR63nm0MCMZ1uKrlF8fd24HmXNgt7h6pUnbe3kvDrrYvZeIWmTtVQZvPiclAMbZDWipQeRXQHMZiUY39x4JqfWZMzi7spQBZ4q8lLCKYygtSgw27ZLX67Adm6LJPGyiCXZ.jpg','','شاورما','ساندوتش شاورما باللحم',''],
+['Shawarma','Chicken Shawarma Slices','','41','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','شاورما','شرائح شاورما الدجاج',''],
+['Shawarma','Meat Shawarma Slices','','46','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','شاورما','شرائح شاورما اللحم',''],
+['Shawarma','Half A Grilled Chicken','With Special Levantine Seasoning','33','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/91e8a9835b7d7fb115e7220f3c1845e7/HCxsrhhuntafAd10AdIZrpnX500hbcnEu7f3U6ahhcD5dbCjbpkbLKcF4hhRQoAHlI8GWe1g2vCw0Dsx6Lz0Y5cD82oj3r6MveuSMok5eUz9wIgtS0qmdMQUFoQQebtdsKyekdEmtQYk1ghq0fQkZ9.jpg','Best Seller','شاورما','نصف دجاجة مشوية','مع توابل شامية خاصة'],
+['Soft Drinks And Water','Glass Water','','5','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','المشروبات الغازية والماء','كوب ماء',''],
+['Soft Drinks And Water','Blueberry, Watermelon, Strawberry Mix Mojito','','18','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/3d93078e17b3ac0b2cb72d640e6b7b5e/ZGsR0KihOrDSHLRQahVQ0beodQEd261cLxivpO7EJLg6L4YGA6Pl2xFyip1Yif7Uu2yzYlJGcdPfpZyXTlUWmMuJOsJGK5L2urdvNVMlfrCPwysMRyTjPbzf73tGYdm3M5xrssAEUGJFZGEKy6GfZv.jpg','','المشروبات الغازية والماء','موهيتو مزيج التوت الأزرق والبطيخ والفراولة',''],
+['Soft Drinks And Water','Pepsi','Regular Or Diet','5','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','المشروبات الغازية والماء','بيبسي','عادي أو حمية'],
+['Soft Drinks And Water','Seven Up','Regular Or Diet','5','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','','المشروبات الغازية والماء','سفن أب','عادي أو حمية'],
+['Soft Drinks And Water','Mojito','Pomegranate, Syrian Berries, Or Hibiscus','18','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/3a8f32117706aa76f6b2fd62928f40c5/gjkznBqI8vg4C4SZXdRUVsZYtxFXB1DpVDXdF4OF2dd5ADs9gITJHjh2GPPlNLeRqPRKWJSkxJecfIfLk9PqTOqzt400MXkY69IAl3WXC4u7iQJutQg03qde48MCXw4Vcdv1ruBUizv8VElQqg9FLA.jpg','','المشروبات الغازية والماء','موهيتو','الرمان، أو التوت السوري، أو الكركديه'],
+['Soft Drinks And Water','Water','','2','','https://menus.sfo3.cdn.digitaloceanspaces.com/49b96e74ebebf0ec5e3b4068e88d7831/1766741459-28blXZ41YiSy0pvaRXOjxF3BtEp84fYCUZagi73WmS9la99DeEQiwNlClucPlmlkdZbetUf8gcV059g2c3Y7Ul8aJLFcmHc8yhNn.jpg','https://menus.sfo3.cdn.digitaloceanspaces.com/994a225ba9c62c025921a239dcfb6530/AnO3xsthfAfEopL188TqKVdXumJ8nX4w04sDVL4XfSkCDhQBuBu1U3zsLkmun83Ho4Gl8SS5vaGHLQTxScO5HApEl11MEOdwVxfzMcafvjxYoTFeYuAeOLpmifHa5NPbxVrq419dtgFEQRs2ZdGkjd.png','','المشروبات الغازية والماء','ماء','']
+];
+
+// ═══════════════════════════════════════════════════
+//  BOOT — load directly from hardcoded data
+// ═══════════════════════════════════════════════════
+init({ info: HARDCODED_INFO, items: HARDCODED_ITEMS });
+</script>
+</body>
+</html>
