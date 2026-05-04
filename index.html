@@ -658,6 +658,19 @@ body.rtl .item-price{font-size:15px}
   .search-wrap{padding:10px 48px}
   .offers-strip{padding:12px 48px}
 }
+
+
+/* Ensure the row is a flex container */
+.header-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+/* The back button stays left, others move right */
+.icon-btn:first-child {
+    margin-right: auto;
+}
 </style>
 <script>
 (function(){
@@ -698,6 +711,7 @@ body.rtl .item-price{font-size:15px}
   <div class="header-inner" id="headerInner">
     <!-- Row 1: Logo + Restaurant Name/Desc/Location -->
     <div class="hdr-row1">
+	
       <div class="logo-wrap" id="logoWrap"><div class="logo-circle" id="logoCircle">🍽️</div></div>
       <div class="restaurant-info">
         <div class="restinfo-name-row">
@@ -711,9 +725,17 @@ body.rtl .item-price{font-size:15px}
     </div>
     <!-- Row 2: All action buttons in one line -->
     <div class="hdr-row2">
+	
+	<button class="icon-btn" title="Back to Menu" 
+        onclick="window.location.href='https://github.io'" 
+        style="margin-right: auto;">
+	  ⬅️
+	</button>	
+	
       <button class="lang-btn" id="langBtn" onclick="toggleLang()" title="Switch language">EN | عر</button>
       <button class="icon-btn" title="Search" onclick="toggleSearch()">🔍</button>
       <button class="cat-toggle-btn" id="catToggleBtn" onclick="toggleCategoryBar()">☰ Menu</button>
+	  
     </div>
   </div>
   <div class="divider-bar"></div>
@@ -1115,13 +1137,20 @@ function syncOffersStripVisibility(){
 function toggleDarkMode(){
   const isDark=document.body.classList.toggle('dark-mode');
   document.getElementById('darkToggleBtn').textContent=isDark?'☀️':'🌙';
-  // Dark mode is NEVER persisted — light mode is always the default on next load
-  try{ localStorage.removeItem('menuDarkMode'); }catch(ex){}
+  try{ localStorage.setItem('menuDarkMode', isDark?'1':'0'); }catch(ex){}
 }
-// Always force light mode on load — clear any previously saved dark preference
+// Restore saved preference
 (function(){
-  try{ localStorage.removeItem('menuDarkMode'); }catch(ex){}
-  document.body.classList.remove('dark-mode');
+  try{
+    if(localStorage.getItem('menuDarkMode')==='1'){
+      document.body.classList.add('dark-mode');
+      // btn emoji set after DOM ready
+      document.addEventListener('DOMContentLoaded',()=>{
+        const btn=document.getElementById('darkToggleBtn');
+        if(btn) btn.textContent='☀️';
+      });
+    }
+  }catch(ex){}
 })();
 
 // ═══════════════════════════════════════════════════
